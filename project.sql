@@ -43,6 +43,13 @@ CREATE TABLE student_record(
     stream varchar(3) not null
 );
 
+CREATE TABLE instructor(
+    instructor_id varchar(11) primary key,
+    instructor_name varchar(25) not null,
+    instructor_dep varchar(3) not null
+);
+
+
 CREATE TABLE current_info(
     holder varchar(4) not null,
     sem integer not null,
