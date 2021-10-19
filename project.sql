@@ -117,7 +117,7 @@ cred real;
 BEGIN
 grade :=0;
 cred :=0;
-for r in EXECUTE FORMAT('SELECT * FROM %I;', current_user||'_tt') into r loop;
+for r in EXECUTE FORMAT('SELECT * FROM %I;', current_user||'_tt') into r loop
 grade := grade + r.credits*r.grade;
 cred := cred + r.credits;
 END loop;
