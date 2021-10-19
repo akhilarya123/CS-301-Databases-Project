@@ -11,7 +11,7 @@ CREATE TABLE course_offerings(
     course_id varchar(6) not null,
     semester int not null,
     yr int not null,
-    teacher_id varchar(11) not null,
+    teacher_id varchar(12) not null,
     section_id int not null,
     cgpa_criteria real,
     PRIMARY KEY(course_id, teacher_id, section_id)
@@ -23,11 +23,11 @@ CREATE TABLE prerequisite(
     primary key(course_id, prereq)
 );
 
-CREATE TABLE batch(
+CREATE TABLE batch_req(
     course_id varchar(6) not null,
-    stream varchar(3) not null,
+    department varchar(3) not null,
     yr integer not null,
-    primary key(course_id, stream, yr)
+    primary key(course_id, department, yr)
 );
 
 CREATE TABLE time_table(
@@ -38,22 +38,22 @@ CREATE TABLE time_table(
 );
 
 CREATE TABLE student_record(
-    student_id varchar(11) primary key,
+    student_id varchar(12) primary key,
     student_name varchar(25) not null,
-    stream varchar(3) not null
+    yr integer not null,
+    department varchar(3) not null
 );
-
-CREATE TABLE instructor(
-    instructor_id varchar(11) primary key,
-    instructor_name varchar(25) not null,
-    instructor_dep varchar(3) not null
-);
-
 
 CREATE TABLE current_info(
     holder varchar(4) not null,
     sem integer not null,
     yr integer not null
+);
+
+CREATE TABLE instructors(
+    teacher_id varchar(12) primary key,
+    teacher_name varchar(25) not null,
+    department varchar(3) not null
 );
 
 INSERT INTO current_info values('curr', 1, 2021);
@@ -65,15 +65,15 @@ RETURNS TRIGGER
 LANGUAGE PLPGSQL
 AS $$
 DECLARE
-stdid varchar(11);
+stdid varchar(12);
 BEGIN
 
 EXECUTE FORMAT('CREATE TABLE %I(
-    student_id varchar(11) primary key
+    student_id varchar(12) primary key
 );', NEW.course_id||'_students');
 
 EXECUTE FORMAT('CREATE TABLE %I(
-    student_id varchar(11) primary key,
+    student_id varchar(12) primary key,
     grade int not null
 );', NEW.course_id||'_grades');
 
@@ -183,6 +183,10 @@ cgpa real;
 criteria real;
 cred real;
 curr_cred real;
+flag integer;
+r record;
+s record;
+prereq varchar(6);
 BEGIN
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
 IF NEW.course_id NOT IN (select course_offerings.course_id from course_offerings) THEN
@@ -207,6 +211,23 @@ IF cgpa<criteria THEN
 RAISE EXCEPTION 'CGPA too low!';
 END IF;
 
+flag := 0;
+SELECT * from student_record where current_user = student_record.student_id into s;
+for r in EXECUTE FORMAT('SELECT * FROM batch_req where NEW.course_id = batch_req.course_id;') loop
+IF r.yr = s.yr and r.department = s.department THEN
+flag := 1;
+END IF;
+END LOOP;
+IF flag = 0
+RAISE EXCEPTION 'Your batch is ineligible for this course!';
+END IF;
+
+FOR prereq in EXECUTE FORMAT('SELECT prereq from prerequisite where NEW.course_id = prerequisite.course_id;') loop
+IF NOT EXISTS IN EXECUTE FORMAT('SELECT * FROM %I where prereq = %I.course_id;', current_user||'_tt', current_user||'_tt') THEN
+RAISE EXCEPTION 'Prerequisites not matched!';
+END IF;
+END loop;
+
 SELECT get_prev_creds() into cred;
 EXECUTE FORMAT('SELECT SUM(credits) from %I;', current_user||'_enr') into curr_cred;
 IF curr_cred + NEW.credits > 1.25*cred THEN
@@ -217,7 +238,7 @@ END;
 $$;
 
 -------------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION new_student(student_id varchar(11), student_name varchar(25), stream varchar(3))
+CREATE OR REPLACE FUNCTION new_student(student_id varchar(12), student_name varchar(25), yr integer, department varchar(3))
 RETURNS void
 LANGUAGE PLPGSQL
 AS $$
@@ -230,7 +251,7 @@ BEGIN
 EXECUTE FORMAT('CREATE USER %I WITH ENCRYPTED PASSWORD ''pass'';', student_id);
 
 --Insert into student records
-EXECUTE FORMAT('INSERT INTO student_record values(%L, %L, %L);', student_id, student_name, stream);
+EXECUTE FORMAT('INSERT INTO student_record values(%L, %L, %L, %L);', student_id, student_name, yr, department);
 
 --Enrollment table
 EXECUTE FORMAT('CREATE TABLE %I(
@@ -275,15 +296,15 @@ EXECUTE FORMAT('GRANT SELECT on batch to %I;', student_id);
 EXECUTE FORMAT('GRANT SELECT on time_table to %I;', student_id);
 EXECUTE FORMAT('GRANT SELECT on current_info to %I;', student_id);
 
-for cid in EXECUTE FORMAT('select * from course_offerings;') loop
-EXECUTE FORMAT('GRANT SELECT on %I to %I;', cid, student_id);
+for cid in EXECUTE FORMAT('select course_id from course_offerings;') loop
+EXECUTE FORMAT('GRANT SELECT on %I to %I;', cid||'_students', student_id);
 end loop;
 
 EXECUTE FORMAT('CREATE TRIGGER %I
 BEFORE INSERT
 ON %I
 FOR EACH ROW
-EXECUTE PROCEDURE _check_enrol();', student||'_trig', student_id||'_tt');
+EXECUTE PROCEDURE _check_enrol();', student||'_trig', student_id||'_enr');
 
 END;
 $$;
