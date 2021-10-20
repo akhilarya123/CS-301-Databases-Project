@@ -304,7 +304,7 @@ EXECUTE FORMAT('CREATE TRIGGER %I
 BEFORE INSERT
 ON %I
 FOR EACH ROW
-EXECUTE PROCEDURE _check_enrol();', student||'_trig', student_id||'_enr');
+EXECUTE PROCEDURE _check_enrol();', student_ir||'_trig', student_id||'_enr');
 
 END;
 $$;
