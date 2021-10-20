@@ -117,7 +117,7 @@ cred real;
 BEGIN
 grade :=0;
 cred :=0;
-for r in EXECUTE FORMAT('SELECT * FROM %I;', current_user||'_tt') into r loop
+for r in EXECUTE FORMAT('SELECT * FROM %I;', current_user||'_tt') loop
 grade := grade + r.credits*r.grade;
 cred := cred + r.credits;
 END loop;
@@ -142,7 +142,7 @@ BEGIN
 cred1 :=0;
 cred2 :=0;
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
-for r in EXECUTE FORMAT('SELECT * FROM %I;', current_user||'_tt') into r loop
+for r in EXECUTE FORMAT('SELECT * FROM %I;', current_user||'_tt') loop
 IF curr.sem = 1 THEN
 IF r.sem = 1 and r.yr = (curr.yr - 1) THEN
 cred2 := cred2 + r.credits;
@@ -218,7 +218,7 @@ IF r.yr = s.yr and r.department = s.department THEN
 flag := 1;
 END IF;
 END LOOP;
-IF flag = 0
+IF flag = 0 THEN
 RAISE EXCEPTION 'Your batch is ineligible for this course!';
 END IF;
 
