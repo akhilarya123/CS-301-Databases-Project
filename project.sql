@@ -77,6 +77,8 @@ EXECUTE FORMAT('CREATE TABLE %I(
     grade int not null
 );', NEW.course_id||'_grades');
 
+
+
 for stdid in EXECUTE FORMAT('select * from student_record;') loop
 EXECUTE FORMAT('GRANT SELECT on %L to %L;', NEW.course_id||'_students', stdid);
 end loop;
@@ -117,7 +119,7 @@ cred real;
 BEGIN
 grade :=0;
 cred :=0;
-for r in EXECUTE FORMAT('SELECT * FROM %I;', current_user||'_tt') loop
+for r in EXECUTE FORMAT('SELECT * FROM %I;', current_user||'_tt') into r loop
 grade := grade + r.credits*r.grade;
 cred := cred + r.credits;
 END loop;
@@ -142,7 +144,7 @@ BEGIN
 cred1 :=0;
 cred2 :=0;
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
-for r in EXECUTE FORMAT('SELECT * FROM %I;', current_user||'_tt') loop
+for r in EXECUTE FORMAT('SELECT * FROM %I;', current_user||'_tt') into r loop
 IF curr.sem = 1 THEN
 IF r.sem = 1 and r.yr = (curr.yr - 1) THEN
 cred2 := cred2 + r.credits;
@@ -186,6 +188,7 @@ curr_cred real;
 flag integer;
 r record;
 s record;
+t record;
 prereq varchar(6);
 BEGIN
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
@@ -193,7 +196,7 @@ IF NEW.course_id NOT IN (select course_offerings.course_id from course_offerings
 RAISE EXCEPTION 'Course does not exist!';
 END IF;
 
-IF NEW.credits NOT IN (select course_offerings.credits from course_offerings where course_offerings.course_id = NEW.course_id) THEN
+IF NEW.credits NOT IN (select course_catalogue.credits from course_catalogue where course_catalogue.course_id = NEW.course_id) THEN
 RAISE EXCEPTION 'Incorrect Credits value!';
 END IF;
 
@@ -205,9 +208,10 @@ IF NEW.yr != curr.yr THEN
 RAISE EXCEPTION 'Incorrect Year!';
 END IF;
 
+criteria := 11;
 SELECT get_cgpa() into cgpa;
 SELECT cgpa_criteria FROM course_offerings where NEW.course_id = course_offerings.course_id into criteria;
-IF cgpa<criteria THEN
+IF cgpa<criteria and criteria<11 THEN
 RAISE EXCEPTION 'CGPA too low!';
 END IF;
 
@@ -222,10 +226,22 @@ IF flag = 0 THEN
 RAISE EXCEPTION 'Your batch is ineligible for this course!';
 END IF;
 
+r:=row(null);
 FOR prereq in EXECUTE FORMAT('SELECT prereq from prerequisite where NEW.course_id = prerequisite.course_id;') loop
-IF NOT EXISTS IN EXECUTE FORMAT('SELECT * FROM %I where prereq = %I.course_id;', current_user||'_tt', current_user||'_tt') THEN
+EXECUTE FORMAT('SELECT * FROM %I where prereq = %I.course_id;', current_user||'_tt', current_user||'_tt') INTO r;
+IF r is null THEN
 RAISE EXCEPTION 'Prerequisites not matched!';
 END IF;
+END loop;
+
+FOR r IN (SELECT * FROM time_table where NEW.course_id = time_table.course_id) loop
+FOR s IN EXECUTE FORMAT('SELECT * FROM %I;', current_user||'_enr') loop
+FOR t IN (SELECT * FROM time_table where s.course_id = time_table.course_id) loop
+IF r.day_of_week = t.day_of_week and r.slot = t.slot THEN
+RAISE EXCEPTION 'Time slot clash with %', s.course_id;
+END IF;
+END loop;
+END loop;
 END loop;
 
 SELECT get_prev_creds() into cred;
@@ -275,6 +291,7 @@ EXECUTE FORMAT('CREATE TABLE %I(
 --Ticket table
 EXECUTE FORMAT('CREATE TABLE %I(
     course_id varchar(6) not null,
+    credits real not null,
     sem integer not null,
     year integer not null,
     approval varchar(30) not null,
@@ -308,3 +325,119 @@ EXECUTE PROCEDURE _check_enrol();', student_id||'_trig', student_id||'_enr');
 
 END;
 $$;
+
+---------------------------------------------------------------------------------------
+
+-- 4 level of requests
+-- studentid_lvl1, instructorid_lvl2, ....
+-- lvl1 access to students and so on
+
+/*
+create table lvl1_student_id(
+    credits real not null,
+    teacher_id varchar(12) not null,
+    course_id integer not null,
+    sec_id integer not null,
+    approval varchar(50) not null,
+    primary key(course_id)
+);
+
+create table lvl2_teacher_id(
+    credits real not null,
+    student_id varchar(12) not null,
+    course_id integer not null,
+    sec_id integer not null,
+    approval varchar(50) not null,
+    primary key(course_id)
+);
+
+create table lvl3_batch_adv_id(
+    credits real not null,
+    student_id varchar(12) not null,
+    course_id integer not null,
+    sec_id integer not null,
+    approval varchar(50) not null,
+    primary key(course_id)
+);
+
+create table lvl4_dean(
+    credits real not null,
+    student_id varchar(12) not null,
+    course_id integer not null,
+    sec_id integer not null,
+    approval varchar(50) not null,
+    primary key(course_id)
+);
+*/
+
+CREATE OR REPLACE FUNCTION generate_ticket(teacher_id varchar(12), course_id int, sec_id int)
+RETURNS void
+LANGUAGE PLPGSQL
+AS $$
+DECLARE
+credits_curr real;
+BEGIN
+-- insert a tuple into student request table
+select credits_curr into  from course_catalogue where course_catalogue.course_id = course_id;
+execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl1_' || current_user, credits_curr, teacher_id, course_id, sec_id, 'Waiting Approval');
+execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl2_' || teacher_id, credits_curr, current_user, course_id, sec_id, 'Waiting Approval');
+RETURN cnt;
+END;
+$$;
+
+/*
+table for lvl2(
+    student_id,
+    course,
+    sec,
+    approval
+)
+*/
+CREATE OR REPLACE FUNCTION lvl2()
+RETURNS TRIGGER
+LANGUAGE PLPGSQL
+AS $$
+DECLARE
+BEGIN
+
+if NEW.approval = 'Waiting for approval' then
+raise notice 'request queued !';
+
+elsif NEW.approval = 'Approved' then
+execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl1_' || current_user, credits_curr, teacher_id, course_id, sec_id, 'Request approved');
+execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl3_' || substr(current_user, 1, 7), credits_curr, teacher_id, course_id, sec_id, 'Request approved');
+
+else
+execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl1_' || current_user, credits_curr, teacher_id, course_id, sec_id, 'Denied request');
+end if;
+
+RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER teacher_id_rt
+AFTER INSERT
+ON lvl2_teacher_id
+FOR EACH ROW
+EXECUTE PROCEDURE lvl2();
+
+CREATE OR REPLACE FUNCTION lvl3()
+RETURNS TRIGGER
+LANGUAGE PLPGSQL
+AS $$
+DECLARE
+BEGIN
+
+RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER batch_adv_id_rt
+AFTER INSERT
+ON lvl3_batch_adv_id
+FOR EACH ROW
+EXECUTE PROCEDURE lvl3();
+
+
+
+
