@@ -86,7 +86,7 @@ RETURN NEW;
 END;
 $$;
 
-CREATE TRIGGER insert_course_offerings
+CREATE OR REPLACE TRIGGER insert_course_offerings
 AFTER INSERT
 ON course_offerings
 FOR EACH ROW
@@ -317,7 +317,7 @@ for cid in EXECUTE FORMAT('select course_id from course_offerings;') loop
 EXECUTE FORMAT('GRANT SELECT on %I to %I;', cid||'_students', student_id);
 end loop;
 
-EXECUTE FORMAT('CREATE TRIGGER %I
+EXECUTE FORMAT('CREATE OR REPLACE TRIGGER %I
 BEFORE INSERT
 ON %I
 FOR EACH ROW
@@ -415,7 +415,7 @@ RETURN NEW;
 END;
 $$;
 
-CREATE TRIGGER teacher_id_rt
+CREATE OR REPLACE TRIGGER teacher_id_rt
 AFTER INSERT
 ON lvl2_teacher_id
 FOR EACH ROW
@@ -432,7 +432,7 @@ RETURN NEW;
 END;
 $$;
 
-CREATE TRIGGER batch_adv_id_rt
+CREATE OR REPLACE TRIGGER batch_adv_id_rt
 AFTER INSERT
 ON lvl3_batch_adv_id
 FOR EACH ROW
