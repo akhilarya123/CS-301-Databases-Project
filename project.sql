@@ -14,7 +14,7 @@ CREATE TABLE course_offerings(
     teacher_id varchar(12) not null,
     section_id int not null,
     cgpa_criteria real,
-    PRIMARY KEY(course_id, teacher_id, section_id)
+    PRIMARY KEY(course_id, section_id)
 );
 
 CREATE TABLE prerequisite(
@@ -60,6 +60,21 @@ INSERT INTO current_info values('curr', 1, 2021);
 
 -------------------------------------------------------------------------------------
 
+CREATE USER dean WITH ENCRYPTED PASSWORD 'pass';
+CREATE ROLE BA;
+CREATE ROLE INS;
+CREATE ROLE STD;
+
+GRANT BA to dean WITH ADMIN OPTION;
+GRANT INS to dean WITH ADMIN OPTION;
+GRANT STD to dean WITH ADMIN OPTION;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO dean;
+GRANT USAGE ON schema public to dean;
+
+GRANT SELECT ON course_offerings to BA, STD, INS;
+
+-------------------------------------------------------------------------------------
+
 CREATE OR REPLACE FUNCTION _insert_course_offerings()
 RETURNS TRIGGER
 LANGUAGE PLPGSQL
@@ -70,23 +85,22 @@ BEGIN
 
 EXECUTE FORMAT('CREATE TABLE %I(
     student_id varchar(12) primary key
-);', NEW.course_id||'_students');
+);', NEW.course_id||'_'||NEW.section_id||'_students');
 
 EXECUTE FORMAT('CREATE TABLE %I(
     student_id varchar(12) primary key,
     grade int not null
-);', NEW.course_id||'_grades');
+);', NEW.course_id||'_'||NEW.section_id||'_grades');
 
 
 
-for stdid in EXECUTE FORMAT('select * from student_record;') loop
-EXECUTE FORMAT('GRANT SELECT on %L to %L;', NEW.course_id||'_students', stdid);
-end loop;
+GRANT SELECT ON course_offerings to BA, STD, INS;
+GRANT USAGE ON course_offerings to dean;
 RETURN NEW;
 END;
 $$;
 
-CREATE OR REPLACE TRIGGER insert_course_offerings
+CREATE TRIGGER insert_course_offerings
 AFTER INSERT
 ON course_offerings
 FOR EACH ROW
@@ -291,10 +305,12 @@ EXECUTE FORMAT('CREATE TABLE %I(
 --Ticket table
 EXECUTE FORMAT('CREATE TABLE %I(
     course_id varchar(6) not null,
-    credits real not null,
+    sec_id integer not null,
     sem integer not null,
     year integer not null,
+    ts TIMESTAMP not null,
     approval varchar(30) not null,
+    
     primary key(course_id, sem, year, approval)
 );', student_id||'_ticket');
 
@@ -317,7 +333,7 @@ for cid in EXECUTE FORMAT('select course_id from course_offerings;') loop
 EXECUTE FORMAT('GRANT SELECT on %I to %I;', cid||'_students', student_id);
 end loop;
 
-EXECUTE FORMAT('CREATE OR REPLACE TRIGGER %I
+EXECUTE FORMAT('CREATE TRIGGER %I
 BEFORE INSERT
 ON %I
 FOR EACH ROW
@@ -370,74 +386,106 @@ create table lvl4_dean(
 );
 */
 
-CREATE OR REPLACE FUNCTION generate_ticket(teacher_id varchar(12), course_id int, sec_id int)
+-- CREATE OR REPLACE FUNCTION generate_ticket(teacher_id varchar(12), course_id int, sec_id int)
+-- RETURNS void
+-- LANGUAGE PLPGSQL
+-- AS $$
+-- DECLARE
+-- credits_curr real;
+-- BEGIN
+-- -- insert a tuple into student request table
+-- select credits_curr into  from course_catalogue where course_catalogue.course_id = course_id;
+-- execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl1_' || current_user, credits_curr, teacher_id, course_id, sec_id, 'Waiting Approval');
+-- execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl2_' || teacher_id, credits_curr, current_user, course_id, sec_id, 'Waiting Approval');
+-- RETURN cnt;
+-- END;
+-- $$;
+
+-- /*
+-- table for lvl2(
+--     student_id,
+--     course,
+--     sec,
+--     approval
+-- )
+-- */
+-- CREATE OR REPLACE FUNCTION lvl2()
+-- RETURNS TRIGGER
+-- LANGUAGE PLPGSQL
+-- AS $$
+-- DECLARE
+-- BEGIN
+
+-- if NEW.approval = 'Waiting for approval' then
+-- raise notice 'request queued !';
+
+-- elsif NEW.approval = 'Approved' then
+-- execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl1_' || current_user, credits_curr, teacher_id, course_id, sec_id, 'Request approved');
+-- execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl3_' || substr(current_user, 1, 7), credits_curr, teacher_id, course_id, sec_id, 'Request approved');
+
+-- else
+-- execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl1_' || current_user, credits_curr, teacher_id, course_id, sec_id, 'Denied request');
+-- end if;
+
+-- RETURN NEW;
+-- END;
+-- $$;
+
+-- CREATE TRIGGER teacher_id_rt
+-- AFTER INSERT
+-- ON lvl2_teacher_id
+-- FOR EACH ROW
+-- EXECUTE PROCEDURE lvl2();
+
+-- CREATE OR REPLACE FUNCTION lvl3()
+-- RETURNS TRIGGER
+-- LANGUAGE PLPGSQL
+-- AS $$
+-- DECLARE
+-- BEGIN
+
+-- RETURN NEW;
+-- END;
+-- $$;
+
+-- CREATE TRIGGER batch_adv_id_rt
+-- AFTER INSERT
+-- ON lvl3_batch_adv_id
+-- FOR EACH ROW
+-- EXECUTE PROCEDURE lvl3();
+
+-- EXECUTE FORMAT('CREATE TABLE %I(
+--     course_id varchar(6) not null,
+--     sec_id integer not null,
+--     sem integer not null,
+--     year integer not null,
+--     ts TIMESTAMP not null,
+--     approval varchar(30) not null,
+--     primary key(course_id, sem, year, approval)
+-- );', student_id||'_ticket');
+
+CREATE OR REPLACE FUNCTION generate_ticket(req_course_id varchar(6), req_sec_id int)
 RETURNS void
-LANGUAGE PLPGSQL
+LANGUAGE plpgsql SECURITY DEFINER
 AS $$
 DECLARE
-credits_curr real;
+req_sem, req_year, instructor_id int;
 BEGIN
--- insert a tuple into student request table
-select credits_curr into  from course_catalogue where course_catalogue.course_id = course_id;
-execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl1_' || current_user, credits_curr, teacher_id, course_id, sec_id, 'Waiting Approval');
-execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl2_' || teacher_id, credits_curr, current_user, course_id, sec_id, 'Waiting Approval');
-RETURN cnt;
+select course_offerings.sem, course_offerings.year, course_offerings.instructor_id into (req_sem, req_year, instructor_id) from course_offerings where course_offerings.course_id = req_course_id and course_offerings.sec_id = req_sec_id;
+execute format('INSERT into %I values(%L, %L, %L, %L, %L, %L);', instructor_id || '_ticket', req_course_id, req_sec_id, req_sem, req_year, now(), 'waiting');
 END;
 $$;
 
-/*
-table for lvl2(
-    student_id,
-    course,
-    sec,
-    approval
-)
-*/
-CREATE OR REPLACE FUNCTION lvl2()
-RETURNS TRIGGER
-LANGUAGE PLPGSQL
+CREATE OR REPLACE FUNCTION approve_ticket_instructor(req_course_id varchar(6), req_sec_id int)
+RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER
 AS $$
 DECLARE
+req_sem, req_year, instructor_id int;
 BEGIN
-
-if NEW.approval = 'Waiting for approval' then
-raise notice 'request queued !';
-
-elsif NEW.approval = 'Approved' then
-execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl1_' || current_user, credits_curr, teacher_id, course_id, sec_id, 'Request approved');
-execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl3_' || substr(current_user, 1, 7), credits_curr, teacher_id, course_id, sec_id, 'Request approved');
-
-else
-execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl1_' || current_user, credits_curr, teacher_id, course_id, sec_id, 'Denied request');
-end if;
-
-RETURN NEW;
+select course_offerings.sem, course_offerings.year, course_offerings.instructor_id into (req_sem, req_year, instructor_id) from course_offerings where course_offerings.course_id = req_course_id and course_offerings.sec_id = req_sec_id;
+execute format('INSERT into %I values(%L, %L, %L, %L, %L, %L);', instructor_id || '_ticket', req_course_id, req_sec_id, req_sem, req_year, now(), 'waiting');
 END;
 $$;
-
-CREATE OR REPLACE TRIGGER teacher_id_rt
-AFTER INSERT
-ON lvl2_teacher_id
-FOR EACH ROW
-EXECUTE PROCEDURE lvl2();
-
-CREATE OR REPLACE FUNCTION lvl3()
-RETURNS TRIGGER
-LANGUAGE PLPGSQL
-AS $$
-DECLARE
-BEGIN
-
-RETURN NEW;
-END;
-$$;
-
-CREATE OR REPLACE TRIGGER batch_adv_id_rt
-AFTER INSERT
-ON lvl3_batch_adv_id
-FOR EACH ROW
-EXECUTE PROCEDURE lvl3();
-
-
 
 
