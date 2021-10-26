@@ -50,7 +50,7 @@ CREATE TABLE current_info(
     yr integer not null
 );
 
-CREATE TABLE instructors(
+CREATE TABLE instructor_record(
     teacher_id varchar(12) primary key,
     teacher_name varchar(25) not null,
     department varchar(3) not null
@@ -71,7 +71,8 @@ GRANT STD to dean WITH ADMIN OPTION;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO dean;
 GRANT USAGE ON schema public to dean;
 
-GRANT SELECT ON course_offerings to BA, STD, INS;
+GRANT SELECT ON course_offerings, course_catalogue, prerequisite, batch_req, time_table, student_record,
+current_info, instructor_record to BA, STD, INS;
 
 -------------------------------------------------------------------------------------
 
@@ -93,9 +94,9 @@ EXECUTE FORMAT('CREATE TABLE %I(
 );', NEW.course_id||'_'||NEW.section_id||'_grades');
 
 
+EXECUTE FORMAT('GRANT SELECT ON %I TO BA, STD, INS;', NEW.course_id||'_'||NEW.section_id||'_students'); 
+EXECUTE FORMAT('GRANT SELECT ON %I TO %I;', NEW.course_id||'_'||NEW.section_id||'_grades', NEW.teacher_id); 
 
-GRANT SELECT ON course_offerings to BA, STD, INS;
-GRANT USAGE ON course_offerings to dean;
 RETURN NEW;
 END;
 $$;
@@ -208,6 +209,10 @@ BEGIN
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
 IF NEW.course_id NOT IN (select course_offerings.course_id from course_offerings) THEN
 RAISE EXCEPTION 'Course does not exist!';
+END IF;
+
+IF NEW.section_id NOT IN (select course_offerings.section_id from course_offerings) THEN
+RAISE EXCEPTION 'Section does not exist!';
 END IF;
 
 IF NEW.credits NOT IN (select course_catalogue.credits from course_catalogue where course_catalogue.course_id = NEW.course_id) THEN
