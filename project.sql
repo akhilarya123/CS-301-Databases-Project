@@ -310,7 +310,7 @@ EXECUTE FORMAT('CREATE TABLE %I(
 --Ticket table
 EXECUTE FORMAT('CREATE TABLE %I(
     course_id varchar(6) not null,
-    sec_id integer not null,
+    section_id integer not null,
     sem integer not null,
     yr integer not null,
     time_stamp TIMESTAMP not null,
@@ -347,7 +347,7 @@ create table lvl1_student_id(
     credits real not null,
     teacher_id varchar(12) not null,
     course_id integer not null,
-    sec_id integer not null,
+    section_id integer not null,
     approval varchar(50) not null,
     primary key(course_id)
 );
@@ -356,7 +356,7 @@ create table lvl2_teacher_id(
     credits real not null,
     student_id varchar(12) not null,
     course_id integer not null,
-    sec_id integer not null,
+    section_id integer not null,
     approval varchar(50) not null,
     primary key(course_id)
 );
@@ -365,7 +365,7 @@ create table lvl3_batch_adv_id(
     credits real not null,
     student_id varchar(12) not null,
     course_id integer not null,
-    sec_id integer not null,
+    section_id integer not null,
     approval varchar(50) not null,
     primary key(course_id)
 );
@@ -374,13 +374,13 @@ create table lvl4_dean(
     credits real not null,
     student_id varchar(12) not null,
     course_id integer not null,
-    sec_id integer not null,
+    section_id integer not null,
     approval varchar(50) not null,
     primary key(course_id)
 );
 */
 
--- CREATE OR REPLACE FUNCTION generate_ticket(teacher_id varchar(12), course_id int, sec_id int)
+-- CREATE OR REPLACE FUNCTION generate_ticket(teacher_id varchar(12), course_id int, section_id int)
 -- RETURNS void
 -- LANGUAGE PLPGSQL
 -- AS $$
@@ -389,8 +389,8 @@ create table lvl4_dean(
 -- BEGIN
 -- -- insert a tuple into student request table
 -- select credits_curr into  from course_catalogue where course_catalogue.course_id = course_id;
--- execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl1_' || current_user, credits_curr, teacher_id, course_id, sec_id, 'Waiting Approval');
--- execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl2_' || teacher_id, credits_curr, current_user, course_id, sec_id, 'Waiting Approval');
+-- execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl1_' || current_user, credits_curr, teacher_id, course_id, section_id, 'Waiting Approval');
+-- execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl2_' || teacher_id, credits_curr, current_user, course_id, section_id, 'Waiting Approval');
 -- RETURN cnt;
 -- END;
 -- $$;
@@ -414,11 +414,11 @@ create table lvl4_dean(
 -- raise notice 'request queued !';
 
 -- elsif NEW.approval = 'Approved' then
--- execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl1_' || current_user, credits_curr, teacher_id, course_id, sec_id, 'Request approved');
--- execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl3_' || substr(current_user, 1, 7), credits_curr, teacher_id, course_id, sec_id, 'Request approved');
+-- execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl1_' || current_user, credits_curr, teacher_id, course_id, section_id, 'Request approved');
+-- execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl3_' || substr(current_user, 1, 7), credits_curr, teacher_id, course_id, section_id, 'Request approved');
 
 -- else
--- execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl1_' || current_user, credits_curr, teacher_id, course_id, sec_id, 'Denied request');
+-- execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl1_' || current_user, credits_curr, teacher_id, course_id, section_id, 'Denied request');
 -- end if;
 
 -- RETURN NEW;
@@ -450,7 +450,7 @@ create table lvl4_dean(
 
 -- EXECUTE FORMAT('CREATE TABLE %I(
 --     course_id varchar(6) not null,
---     sec_id integer not null,
+--     section_id integer not null,
 --     sem integer not null,
 --     year integer not null,
 --     ts TIMESTAMP not null,
@@ -465,7 +465,7 @@ AS $$
 DECLARE
 req_sem, req_year, instructor_id int;
 BEGIN
-select course_offerings.sem, course_offerings.yr, course_offerings.instructor_id into (req_sem, req_year, instructor_id) from course_offerings where course_offerings.course_id = req_course_id and course_offerings.sec_id = req_sec_id;
+select course_offerings.sem, course_offerings.yr, course_offerings.instructor_id into (req_sem, req_year, instructor_id) from course_offerings where course_offerings.course_id = req_course_id and course_offerings.section_id = req_sec_id;
 execute format('INSERT into %I values(%L, %L, %L, %L, %L, %L);', instructor_id || '_ticket', req_course_id, req_sec_id, req_sem, req_year, now(), 'waiting');
 END;
 $$;
@@ -477,7 +477,7 @@ AS $$
 DECLARE
 req_sem, req_year, instructor_id int;
 BEGIN
-select course_offerings.sem, course_offerings.yr, course_offerings.instructor_id into (req_sem, req_year, instructor_id) from course_offerings where course_offerings.course_id = req_course_id and course_offerings.sec_id = req_sec_id;
+select course_offerings.sem, course_offerings.yr, course_offerings.instructor_id into (req_sem, req_year, instructor_id) from course_offerings where course_offerings.course_id = req_course_id and course_offerings.section_id = req_sec_id;
 execute format('INSERT into %I values(%L, %L, %L, %L, %L, %L);', instructor_id || '_ticket', req_course_id, req_sec_id, req_sem, req_year, now(), 'waiting');
 END;
 $$;
