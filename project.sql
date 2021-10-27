@@ -313,7 +313,7 @@ EXECUTE FORMAT('CREATE TABLE %I(
     sec_id integer not null,
     sem integer not null,
     yr integer not null,
-    ts TIMESTAMP not null,
+    time_stamp TIMESTAMP not null,
     approval varchar(30) not null,
     
     primary key(course_id, sem, yr, approval)
