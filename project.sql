@@ -9,7 +9,7 @@ CREATE TABLE course_catalogue(
 
 CREATE TABLE course_offerings(
     course_id varchar(6) not null,
-    semester int not null,
+    sem int not null,
     yr int not null,
     teacher_id varchar(12) not null,
     section_id int not null,
@@ -95,7 +95,7 @@ EXECUTE FORMAT('CREATE TABLE %I(
 
 
 EXECUTE FORMAT('GRANT SELECT ON %I TO BA, STD, INS;', NEW.course_id||'_'||NEW.section_id||'_students'); 
-EXECUTE FORMAT('GRANT SELECT ON %I TO %I;', NEW.course_id||'_'||NEW.section_id||'_grades', NEW.teacher_id); 
+EXECUTE FORMAT('GRANT INSERT, UPDATE, DELETE, SELECT ON %I TO %I;', NEW.course_id||'_'||NEW.section_id||'_grades', NEW.teacher_id); 
 
 RETURN NEW;
 END;
@@ -292,19 +292,19 @@ EXECUTE FORMAT('INSERT INTO student_record values(%L, %L, %L, %L);', student_id,
 EXECUTE FORMAT('CREATE TABLE %I(
     course_id varchar(6),
     sem integer not null,
-    year integer not null,
+    yr integer not null,
     credits real not null,
-    primary key(course_id, sem, year)
+    primary key(course_id, sem, yr)
 );', student_id||'_enr');
 
 --Transcript table
 EXECUTE FORMAT('CREATE TABLE %I(
     course_id varchar(6),
     sem integer not null,
-    year integer not null,
+    yr integer not null,
     credits real not null,
     grade integer not null,
-    primary key(course_id)
+    primary key(course_id, sem, yr)
 );', student_id||'_tt');
 
 --Ticket table
@@ -312,11 +312,11 @@ EXECUTE FORMAT('CREATE TABLE %I(
     course_id varchar(6) not null,
     sec_id integer not null,
     sem integer not null,
-    year integer not null,
+    yr integer not null,
     ts TIMESTAMP not null,
     approval varchar(30) not null,
     
-    primary key(course_id, sem, year, approval)
+    primary key(course_id, sem, yr, approval)
 );', student_id||'_ticket');
 
 EXECUTE FORMAT('GRANT SELECT on %I to %I;', student_id||'_enr', student_id);
@@ -326,17 +326,6 @@ EXECUTE FORMAT('GRANT SELECT on %I to %I;', student_id||'_tt', student_id);
 
 EXECUTE FORMAT('GRANT SELECT on %I to %I;', student_id||'_ticket', student_id);
 EXECUTE FORMAT('GRANT INSERT on %I to %I;', student_id||'_ticket', student_id);
-
-EXECUTE FORMAT('GRANT SELECT on course_catalogue to %I;', student_id);
-EXECUTE FORMAT('GRANT SELECT on course_offerings to %I;', student_id);
-EXECUTE FORMAT('GRANT SELECT on prerequisite to %I;', student_id);
-EXECUTE FORMAT('GRANT SELECT on batch to %I;', student_id);
-EXECUTE FORMAT('GRANT SELECT on time_table to %I;', student_id);
-EXECUTE FORMAT('GRANT SELECT on current_info to %I;', student_id);
-
-for cid in EXECUTE FORMAT('select course_id from course_offerings;') loop
-EXECUTE FORMAT('GRANT SELECT on %I to %I;', cid||'_students', student_id);
-end loop;
 
 EXECUTE FORMAT('CREATE TRIGGER %I
 BEFORE INSERT
@@ -476,7 +465,7 @@ AS $$
 DECLARE
 req_sem, req_year, instructor_id int;
 BEGIN
-select course_offerings.sem, course_offerings.year, course_offerings.instructor_id into (req_sem, req_year, instructor_id) from course_offerings where course_offerings.course_id = req_course_id and course_offerings.sec_id = req_sec_id;
+select course_offerings.sem, course_offerings.yr, course_offerings.instructor_id into (req_sem, req_year, instructor_id) from course_offerings where course_offerings.course_id = req_course_id and course_offerings.sec_id = req_sec_id;
 execute format('INSERT into %I values(%L, %L, %L, %L, %L, %L);', instructor_id || '_ticket', req_course_id, req_sec_id, req_sem, req_year, now(), 'waiting');
 END;
 $$;
@@ -488,12 +477,10 @@ AS $$
 DECLARE
 req_sem, req_year, instructor_id int;
 BEGIN
-select course_offerings.sem, course_offerings.year, course_offerings.instructor_id into (req_sem, req_year, instructor_id) from course_offerings where course_offerings.course_id = req_course_id and course_offerings.sec_id = req_sec_id;
+select course_offerings.sem, course_offerings.yr, course_offerings.instructor_id into (req_sem, req_year, instructor_id) from course_offerings where course_offerings.course_id = req_course_id and course_offerings.sec_id = req_sec_id;
 execute format('INSERT into %I values(%L, %L, %L, %L, %L, %L);', instructor_id || '_ticket', req_course_id, req_sec_id, req_sem, req_year, now(), 'waiting');
 END;
 $$;
-
-
 
 
 
@@ -510,4 +497,3 @@ BEGIN
 EXECUTE FORMAT('COPY  %I FROM %L  DELIMITER %L CSV HEADER ;', course_id||'_'||section_id||'_grades',file_name,',');
 END;
 $$;
-
