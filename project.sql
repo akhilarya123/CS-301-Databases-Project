@@ -494,3 +494,20 @@ END;
 $$;
 
 
+
+
+
+-----------------------------------------------------------------------------
+
+
+CREATE OR REPLACE FUNCTION get_grades_from_csv(course_id varchar(6), section_id int, file_name varchar(50))
+RETURNS void
+LANGUAGE PLPGSQL
+AS $$
+
+BEGIN
+
+EXECUTE FORMAT('COPY  %I FROM %L  DELIMITER %L CSV HEADER ;', course_id||'_'||section_id||'_grades',file_name,',');
+END;
+$$;
+
