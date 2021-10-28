@@ -134,7 +134,7 @@ cred real;
 BEGIN
 grade :=0;
 cred :=0;
-for r in EXECUTE FORMAT('SELECT * FROM %I;', current_user||'_tt') into r loop
+for r in EXECUTE FORMAT('SELECT * FROM %I;', current_user||'_tt')  loop
 grade := grade + r.credits*r.grade;
 cred := cred + r.credits;
 END loop;
@@ -159,7 +159,7 @@ BEGIN
 cred1 :=0;
 cred2 :=0;
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
-for r in EXECUTE FORMAT('SELECT * FROM %I;', current_user||'_tt') into r loop
+for r in EXECUTE FORMAT('SELECT * FROM %I;', current_user||'_tt') loop
 IF curr.sem = 1 THEN
 IF r.sem = 1 and r.yr = (curr.yr - 1) THEN
 cred2 := cred2 + r.credits;
@@ -463,7 +463,9 @@ RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER
 AS $$
 DECLARE
-req_sem, req_year, instructor_id int;
+req_sem int;
+req_year int;
+instructor_id int;
 BEGIN
 select course_offerings.sem, course_offerings.yr, course_offerings.instructor_id into (req_sem, req_year, instructor_id) from course_offerings where course_offerings.course_id = req_course_id and course_offerings.section_id = req_sec_id;
 execute format('INSERT into %I values(%L, %L, %L, %L, %L, %L);', instructor_id || '_ticket', req_course_id, req_sec_id, req_sem, req_year, now(), 'waiting');
