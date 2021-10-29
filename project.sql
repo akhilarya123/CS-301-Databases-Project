@@ -115,6 +115,21 @@ EXECUTE PROCEDURE _insert_course_offerings();
 
 -------------------------------------------------------------------------------------
 
+CREATE OR REPLACE FUNCTION new_course_offering(course_id varchar(6), section_id integer, teacher_id varchar(12), cgpa_criteria real)
+RETURNS void
+LANGUAGE PLPGSQL
+AS $$
+DECLARE
+curr record;
+BEGIN
+EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
+EXECUTE FORMAT('INSERT INTO course_offerings values(%L, %L, %L, %L, %L, %L);', 
+course_id, curr.sem, curr.yr, teacher_id, section_id, cgpa_criteria);
+END;
+$$;
+
+-------------------------------------------------------------------------------------
+
 CREATE OR REPLACE FUNCTION generate_ticket(course_id varchar(6), section_id integer)
 RETURNS void
 LANGUAGE PLPGSQL
@@ -306,7 +321,7 @@ curr record;
 
 BEGIN
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
-EXECUTE FORMAT('INSERT INTO %I VALUES(%L);', NEW.course_id||'_'||NEW.course_id||'_students', session_user)
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L);', NEW.course_id||'_'||NEW.course_id||'_students', session_user);
 
 RETURN NEW;
 END;
@@ -412,13 +427,50 @@ $$;
 
 -------------------------------------------------------------------------------
 
+CREATE OR REPLACE FUNCTION _instructor_ticket_before()
+RETURNS TRIGGER
+LANGUAGE PLPGSQL SECURITY DEFINER
+AS $$
+DECLARE
+curr record;
+tid varchar(12);
+BEGIN
+/*
+EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
+SELECT * FROM course_offerings where NEW.course_id = course_offerings.course_id and NEW.section_id = course_offerings.section_id into tid;
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', tid||'_ticket', session_user, NEW.course_id, NEW.section_id, curr.sem, curr.yr, "Pending Instructor Approval");
+*/
+RETURN NEW;
+END;
+$$;
+
+-------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION _instructor_ticket_after()
+RETURNS TRIGGER
+LANGUAGE PLPGSQL SECURITY DEFINER
+AS $$
+DECLARE
+curr record;
+tid varchar(12);
+BEGIN
+/*
+EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
+SELECT * FROM course_offerings where NEW.course_id = course_offerings.course_id and NEW.section_id = course_offerings.section_id into tid;
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', tid||'_ticket', session_user, NEW.course_id, NEW.section_id, curr.sem, curr.yr, "Pending Instructor Approval");
+*/
+RETURN NEW;
+END;
+$$;
+
+-------------------------------------------------------------------------------
+
 CREATE OR REPLACE FUNCTION new_student(student_id varchar(12), student_name varchar(25), yr integer, department varchar(3))
 RETURNS void
 LANGUAGE PLPGSQL
 AS $$
 
 DECLARE
-cid varchar(6);
 
 BEGIN
 --Create student user
@@ -463,22 +515,83 @@ EXECUTE FORMAT('GRANT SELECT on %I to %I;', student_id||'_enr', student_id);
 EXECUTE FORMAT('GRANT INSERT on %I to %I;', student_id||'_enr', student_id);
 
 EXECUTE FORMAT('GRANT SELECT on %I to %I;', student_id||'_tt', student_id);
+EXECUTE FORMAT('GRANT SELECT on %I to BA, INS;', student_id||'_tt');
 
 EXECUTE FORMAT('GRANT SELECT on %I to %I;', student_id||'_ticket', student_id);
 EXECUTE FORMAT('GRANT INSERT on %I to %I;', student_id||'_ticket', student_id);
 EXECUTE FORMAT('GRANT STD to %I;', student_id);
 
-EXECUTE FORMAT('CREATE TRIGGER %I
+EXECUTE FORMAT('CREATE OR REPLACE TRIGGER %I
 BEFORE INSERT
 ON %I
 FOR EACH ROW
 EXECUTE PROCEDURE _student_enr_before();', student_id||'_enr_before', student_id||'_enr');
 
-EXECUTE FORMAT('CREATE TRIGGER %I
+EXECUTE FORMAT('CREATE OR REPLACE TRIGGER %I
 AFTER INSERT
 ON %I
 FOR EACH ROW
-EXECUTE PROCEDURE _student_enr_after();', student_id||'_enr_before', student_id||'_enr');
+EXECUTE PROCEDURE _student_enr_after();', student_id||'_enr_after', student_id||'_enr');
+
+EXECUTE FORMAT('CREATE OR REPLACE TRIGGER %I
+BEFORE INSERT
+ON %I
+FOR EACH ROW
+EXECUTE PROCEDURE _student_ticket_before();', student_id||'_ticket_before', student_id||'_ticket');
+
+EXECUTE FORMAT('CREATE OR REPLACE TRIGGER %I
+AFTER INSERT
+ON %I
+FOR EACH ROW
+EXECUTE PROCEDURE _student_ticket_after();', student_id||'_ticket_after', student_id||'_ticket');
+
+END;
+$$;
+
+---------------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION new_instructor(teacher_id varchar(12), teacher_name varchar(25), department varchar(3))
+RETURNS void
+LANGUAGE PLPGSQL
+AS $$
+
+DECLARE
+
+BEGIN
+--Create student user
+EXECUTE FORMAT('CREATE USER %I WITH ENCRYPTED PASSWORD ''pass'';', teacher_id);
+
+--Insert into student records
+EXECUTE FORMAT('INSERT INTO instructor_record values(%L, %L, %L);', teacher_id, teacher_name, department);
+
+--Ticket table
+EXECUTE FORMAT('CREATE TABLE %I(
+    student_id varchar(12) not null,
+    course_id varchar(6) not null,
+    section_id integer not null,
+    sem integer not null,
+    yr integer not null,
+    approval varchar(30) not null,
+    primary key(student_id, course_id, sem, yr, approval)
+);', teacher_id||'_ticket');
+
+
+EXECUTE FORMAT('GRANT SELECT on %I to %I;', teacher_id||'_ticket', teacher_id);
+EXECUTE FORMAT('GRANT INSERT on %I to %I;', teacher_id||'_ticket', teacher_id);
+EXECUTE FORMAT('GRANT INS to %I;', teacher_id);
+
+EXECUTE FORMAT('CREATE OR REPLACE TRIGGER %I
+BEFORE INSERT
+ON %I
+FOR EACH ROW
+EXECUTE PROCEDURE _instructor_ticket_before();', teacher_id||'_ticket_before', teacher_id||'_ticket');
+
+EXECUTE FORMAT('CREATE OR REPLACE TRIGGER %I
+AFTER INSERT
+ON %I
+FOR EACH ROW
+EXECUTE PROCEDURE _instructor_ticket_after();', teacher_id||'_ticket_after', teacher_id||'_ticket');
+
 
 END;
 $$;
@@ -631,10 +744,7 @@ execute format('INSERT into %I values(%L, %L, %L, %L, %L, %L);', instructor_id |
 END;
 $$;
 
-
-
 -----------------------------------------------------------------------------
-
 
 CREATE OR REPLACE FUNCTION get_grades_from_csv(course_id varchar(6), section_id int, file_name varchar(50))
 RETURNS void
