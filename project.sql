@@ -122,6 +122,12 @@ AS $$
 DECLARE
 curr record;
 BEGIN
+IF course_id NOT IN (SELECT course_id from course_catalogue) THEN
+RAISE EXCEPTION 'Course ID does not exist';
+END IF;
+IF teacher_id NOT IN (SELECT teacher_id from instructor_record) THEN
+RAISE EXCEPTION 'Teacher ID does not exist';
+END IF;
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
 EXECUTE FORMAT('INSERT INTO course_offerings values(%L, %L, %L, %L, %L, %L);', 
 course_id, curr.sem, curr.yr, teacher_id, section_id, cgpa_criteria);
@@ -155,7 +161,7 @@ curr record;
 cred real;
 BEGIN
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
-EXECUTE FORMAT('SELECT c.credits from course_catalogue c where c.course_id = course_id;') into cred;
+EXECUTE FORMAT('SELECT c.credits from course_catalogue c where c.course_id = %L;', course_id) into cred;
 EXECUTE FORMAT('INSERT INTO %I values(%L, %L, %L, %L, %L);', current_user||'_enr', course_id, section_id, curr.sem, curr.yr, cred);
 END;
 $$;
@@ -460,8 +466,51 @@ DECLARE
 baid varchar(12);
 BEGIN
 SELECT batch_advisor_record.ba_id FROM batch_advisor_record, student_record where student_id = NEW.student_id and student_record.department = batch_advisor_record.department INTO baid;
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', baid||'_ticket', NEW.student_id, NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, 'Pending Batch Advisor Approval');
+EXECUTE FORMAT('INSERT INTO dean VALUES(%L, %L, %L, %L, %L, %L);', NEW.student_id, NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, NEW.approval);
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', NEW.student_id||'_ticket', NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, now(), NEW.approval);
+RETURN NEW;
+END;
+$$;
+
+-------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION _batch_advisor_ticket_before()
+RETURNS TRIGGER
+LANGUAGE PLPGSQL SECURITY DEFINER
+AS $$
+DECLARE
+curr record;
+BEGIN
+IF current_user NOT IN (SELECT ba_id from batch_advisor_record) THEN
+RAISE EXCEPTION 'Wrong user/function!';
+END IF;
+
+IF NEW.approval != 'Approved by Batch Advisor' AND NEW.approval != 'Rejected by Batch Advisor' THEN
+RAISE EXCEPTION 'Wrong Approval!';
+END IF;
+
+EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
+IF NOT EXISTS (EXECUTE FORMAT('SELECT * FROM %I where section_id = %L and course_id = %L and student_id = %L and approval = ''Pending Batch Advisor Approval'';'), current_user||'_ticket', NEW.section_id, NEW.course_id, NEW.student_id) THEN
+RAISE EXCEPTION 'Incorrect Values! Check again.';
+END IF;
+RETURN NEW;
+END;
+$$;
+
+-------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION _batch_advisor_ticket_after()
+RETURNS TRIGGER
+LANGUAGE PLPGSQL SECURITY DEFINER
+AS $$
+DECLARE
+baid varchar(12);
+BEGIN
+SELECT batch_advisor_record.ba_id FROM batch_advisor_record, student_record where student_id = NEW.student_id and student_record.department = batch_advisor_record.department INTO baid;
 EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', baid||'_ticket', NEW.student_id, NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, 'Pending BA Approval');
 EXECUTE FORMAT('INSERT INTO dean VALUES(%L, %L, %L, %L, %L, %L);', NEW.student_id, NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, NEW.approval);
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', NEW.student_id||'_ticket', NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, now(), NEW.approval);
 RETURN NEW;
 END;
 $$;
@@ -690,7 +739,7 @@ secid int;
 BEGIN
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
 EXECUTE FORMAT('SELECT section_id from %I where student_id = %L and course_id = %L;', current_user||'_ticket', stdid, cid) INTO secid; 
-EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', current_user||'_ticket', stdid, cid, secid, curr.sem, curr.yr, "Approved by Instructor");
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', current_user||'_ticket', stdid, cid, secid, curr.sem, curr.yr, "Approved by Batch Advisor");
 END;
 $$;
 
@@ -706,7 +755,7 @@ secid int;
 BEGIN
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
 EXECUTE FORMAT('SELECT section_id from %I where student_id = %L and course_id = %L;', current_user||'_ticket', stdid, cid) INTO secid; 
-EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', current_user||'_ticket', stdid, cid, secid, curr.sem, curr.yr, "Rejected by Instructor");
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', current_user||'_ticket', stdid, cid, secid, curr.sem, curr.yr, "Rejected by Batch Advisor");
 END;
 $$;
 
