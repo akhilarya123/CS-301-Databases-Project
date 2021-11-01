@@ -321,7 +321,7 @@ curr record;
 
 BEGIN
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
-EXECUTE FORMAT('INSERT INTO %I VALUES(%L);', NEW.course_id||'_'||NEW.course_id||'_students', session_user);
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L);', NEW.course_id||'_students', session_user);
 
 RETURN NEW;
 END;
