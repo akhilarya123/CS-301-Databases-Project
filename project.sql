@@ -727,7 +727,7 @@ req_sem int;
 req_year int;
 instructor_id int;
 BEGIN
-select course_offerings.sem, course_offerings.yr, course_offerings.instructor_id into (req_sem, req_year, instructor_id) from course_offerings where course_offerings.course_id = req_course_id and course_offerings.section_id = req_sec_id;
+select course_offerings.sem, course_offerings.yr, course_offerings.instructor_id into req_sem, req_year, instructor_id from course_offerings where course_offerings.course_id = req_course_id and course_offerings.section_id = req_sec_id;
 execute format('INSERT into %I values(%L, %L, %L, %L, %L, %L);', instructor_id || '_ticket', req_course_id, req_sec_id, req_sem, req_year, now(), 'waiting');
 END;
 $$;
@@ -737,9 +737,11 @@ RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER
 AS $$
 DECLARE
-req_sem, req_year, instructor_id int;
+req_sem int;
+req_year int;
+instructor_id int;
 BEGIN
-select course_offerings.sem, course_offerings.yr, course_offerings.instructor_id into (req_sem, req_year, instructor_id) from course_offerings where course_offerings.course_id = req_course_id and course_offerings.section_id = req_sec_id;
+select course_offerings.sem, course_offerings.yr, course_offerings.instructor_id into req_sem, req_year, instructor_id from course_offerings where course_offerings.course_id = req_course_id and course_offerings.section_id = req_sec_id;
 execute format('INSERT into %I values(%L, %L, %L, %L, %L, %L);', instructor_id || '_ticket', req_course_id, req_sec_id, req_sem, req_year, now(), 'waiting');
 END;
 $$;
