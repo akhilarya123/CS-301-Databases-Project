@@ -2,6 +2,8 @@
  INSERT INTO course_catalogue VALUES ('cs302',4,2,1,1,4);
  INSERT INTO course_catalogue VALUES ('cs303',2,2,1,1,3);
  INSERT INTO course_catalogue VALUES ('cs201',3,2,1,1,3);
+ INSERT INTO course_catalogue VALUES ('cs304',3,2,1,1,3);
+ INSERT INTO course_catalogue VALUES ('ge103',3,2,1,1,6);
  select new_student('csb1','akhil',2019,'cs');
  select new_student('csb2','adi',2019,'cs');
  select new_student('csb3','rahul',2019,'mec');
@@ -15,9 +17,15 @@
  select new_instructor('ins5','sarit','mec');
  select new_instructor('ins6','robert','cs');
  INSERT INTO course_offerings VALUES ('cs301',1,2019,'ins1',1,0);
- 
- 
- 
- 
+ INSERT INTO course_offerings VALUES ('cs302',1,2019,'ins2',1,0);
+ INSERT INTO course_offerings VALUES ('cs303',2,2019,'ins3',1,0);
+ INSERT INTO course_offerings VALUES ('cs304',1,2019,'ins4',1,0);
+ INSERT INTO course_offerings VALUES ('cs201',1,2019,'ins5',1,0);
+ INSERT INTO course_offerings VALUES ('ge103',1,2019,'ins6',1,0);
+ \c - csb1;
+ select enrol('cs301',1);
+ select enrol('cs302',1);
+ select enrol('cs303',1);
+ select enrol('cs304',1);
  
  
