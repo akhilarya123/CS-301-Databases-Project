@@ -321,7 +321,7 @@ curr record;
 
 BEGIN
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
-EXECUTE FORMAT('INSERT INTO %I VALUES(%L);', NEW.course_id||'_students', session_user);
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L);', NEW.course_id||'_'||NEW.section_id||'_students', session_user);
 
 RETURN NEW;
 END;
@@ -433,13 +433,19 @@ LANGUAGE PLPGSQL SECURITY DEFINER
 AS $$
 DECLARE
 curr record;
-tid varchar(12);
 BEGIN
-/*
+IF current_user NOT IN (SELECT teacher_id from instructor_record) THEN
+RAISE EXCEPTION 'Wrong user/function!';
+END IF;
+
+IF NEW.approval != 'Approved by Instructor' AND NEW.approval != 'Rejected by Instructor' THEN
+RAISE EXCEPTION 'Wrong Approval!';
+END IF;
+
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
-SELECT * FROM course_offerings where NEW.course_id = course_offerings.course_id and NEW.section_id = course_offerings.section_id into tid;
-EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', tid||'_ticket', session_user, NEW.course_id, NEW.section_id, curr.sem, curr.yr, "Pending Instructor Approval");
-*/
+IF NOT EXISTS (EXECUTE FORMAT('SELECT * FROM %I where section_id = %L and course_id = %L and student_id = %L and approval = ''Pending Instructor Approval'';'), current_user||'_ticket', NEW.section_id, NEW.course_id, NEW.student_id) THEN
+RAISE EXCEPTION 'Incorrect Values! Check again.';
+END IF;
 RETURN NEW;
 END;
 $$;
@@ -451,14 +457,11 @@ RETURNS TRIGGER
 LANGUAGE PLPGSQL SECURITY DEFINER
 AS $$
 DECLARE
-curr record;
-tid varchar(12);
+baid varchar(12);
 BEGIN
-/*
-EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
-SELECT * FROM course_offerings where NEW.course_id = course_offerings.course_id and NEW.section_id = course_offerings.section_id into tid;
-EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', tid||'_ticket', session_user, NEW.course_id, NEW.section_id, curr.sem, curr.yr, "Pending Instructor Approval");
-*/
+SELECT batch_advisor_record.ba_id FROM batch_advisor_record, student_record where student_id = NEW.student_id and student_record.department = batch_advisor_record.department INTO baid;
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', baid||'_ticket', NEW.student_id, NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, 'Pending BA Approval');
+EXECUTE FORMAT('INSERT INTO dean VALUES(%L, %L, %L, %L, %L, %L);', NEW.student_id, NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, NEW.approval);
 RETURN NEW;
 END;
 $$;
@@ -555,13 +558,11 @@ RETURNS void
 LANGUAGE PLPGSQL
 AS $$
 
-DECLARE
-
 BEGIN
---Create student user
+--Create user
 EXECUTE FORMAT('CREATE USER %I WITH ENCRYPTED PASSWORD ''pass'';', teacher_id);
 
---Insert into student records
+--Insert into records
 EXECUTE FORMAT('INSERT INTO instructor_record values(%L, %L, %L);', teacher_id, teacher_name, department);
 
 --Ticket table
@@ -598,155 +599,118 @@ $$;
 
 ---------------------------------------------------------------------------------------
 
--- 4 level of requests
--- studentid_lvl1, instructorid_lvl2, ....
--- lvl1 access to students and so on
-
-/*
-create table lvl1_student_id(
-    credits real not null,
-    teacher_id varchar(12) not null,
-    course_id integer not null,
-    section_id integer not null,
-    approval varchar(50) not null,
-    primary key(course_id)
-);
-
-create table lvl2_teacher_id(
-    credits real not null,
-    student_id varchar(12) not null,
-    course_id integer not null,
-    section_id integer not null,
-    approval varchar(50) not null,
-    primary key(course_id)
-);
-
-create table lvl3_batch_adv_id(
-    credits real not null,
-    student_id varchar(12) not null,
-    course_id integer not null,
-    section_id integer not null,
-    approval varchar(50) not null,
-    primary key(course_id)
-);
-
-create table lvl4_dean(
-    credits real not null,
-    student_id varchar(12) not null,
-    course_id integer not null,
-    section_id integer not null,
-    approval varchar(50) not null,
-    primary key(course_id)
-);
-*/
-
--- CREATE OR REPLACE FUNCTION generate_ticket(teacher_id varchar(12), course_id int, section_id int)
--- RETURNS void
--- LANGUAGE PLPGSQL
--- AS $$
--- DECLARE
--- credits_curr real;
--- BEGIN
--- -- insert a tuple into student request table
--- select credits_curr into  from course_catalogue where course_catalogue.course_id = course_id;
--- execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl1_' || current_user, credits_curr, teacher_id, course_id, section_id, 'Waiting Approval');
--- execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl2_' || teacher_id, credits_curr, current_user, course_id, section_id, 'Waiting Approval');
--- RETURN cnt;
--- END;
--- $$;
-
--- /*
--- table for lvl2(
---     student_id,
---     course,
---     sec,
---     approval
--- )
--- */
--- CREATE OR REPLACE FUNCTION lvl2()
--- RETURNS TRIGGER
--- LANGUAGE PLPGSQL
--- AS $$
--- DECLARE
--- BEGIN
-
--- if NEW.approval = 'Waiting for approval' then
--- raise notice 'request queued !';
-
--- elsif NEW.approval = 'Approved' then
--- execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl1_' || current_user, credits_curr, teacher_id, course_id, section_id, 'Request approved');
--- execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl3_' || substr(current_user, 1, 7), credits_curr, teacher_id, course_id, section_id, 'Request approved');
-
--- else
--- execute format('INSERT INTO %I values(%L, %L, %L, %L, %L)', 'lvl1_' || current_user, credits_curr, teacher_id, course_id, section_id, 'Denied request');
--- end if;
-
--- RETURN NEW;
--- END;
--- $$;
-
--- CREATE TRIGGER teacher_id_rt
--- AFTER INSERT
--- ON lvl2_teacher_id
--- FOR EACH ROW
--- EXECUTE PROCEDURE lvl2();
-
--- CREATE OR REPLACE FUNCTION lvl3()
--- RETURNS TRIGGER
--- LANGUAGE PLPGSQL
--- AS $$
--- DECLARE
--- BEGIN
-
--- RETURN NEW;
--- END;
--- $$;
-
--- CREATE TRIGGER batch_adv_id_rt
--- AFTER INSERT
--- ON lvl3_batch_adv_id
--- FOR EACH ROW
--- EXECUTE PROCEDURE lvl3();
-
--- EXECUTE FORMAT('CREATE TABLE %I(
---     course_id varchar(6) not null,
---     section_id integer not null,
---     sem integer not null,
---     year integer not null,
---     ts TIMESTAMP not null,
---     approval varchar(30) not null,
---     primary key(course_id, sem, year, approval)
--- );', student_id||'_ticket');
-
-CREATE OR REPLACE FUNCTION generate_ticket(req_course_id varchar(6), req_sec_id int)
+CREATE OR REPLACE FUNCTION new_batch_advisor(ba_id varchar(12), ba_name varchar(25), department varchar(3))
 RETURNS void
-LANGUAGE plpgsql SECURITY DEFINER
+LANGUAGE PLPGSQL
 AS $$
-DECLARE
-req_sem int;
-req_year int;
-instructor_id int;
+
 BEGIN
-select course_offerings.sem, course_offerings.yr, course_offerings.instructor_id into req_sem, req_year, instructor_id from course_offerings where course_offerings.course_id = req_course_id and course_offerings.section_id = req_sec_id;
-execute format('INSERT into %I values(%L, %L, %L, %L, %L, %L);', instructor_id || '_ticket', req_course_id, req_sec_id, req_sem, req_year, now(), 'waiting');
+--Create user
+EXECUTE FORMAT('CREATE USER %I WITH ENCRYPTED PASSWORD ''pass'';', ba_id);
+
+--Insert into records
+EXECUTE FORMAT('INSERT INTO batch_advisor_record values(%L, %L, %L);', ba_id, ba_name, department);
+
+--Ticket table
+EXECUTE FORMAT('CREATE TABLE %I(
+    student_id varchar(12) not null,
+    course_id varchar(6) not null,
+    section_id integer not null,
+    sem integer not null,
+    yr integer not null,
+    approval varchar(30) not null,
+    primary key(student_id, course_id, sem, yr, approval)
+);', ba_id||'_ticket');
+
+
+EXECUTE FORMAT('GRANT SELECT on %I to %I;', ba_id||'_ticket', ba_id);
+EXECUTE FORMAT('GRANT INSERT on %I to %I;', ba_id||'_ticket', ba_id);
+EXECUTE FORMAT('GRANT BA to %I;', ba_id);
+
+EXECUTE FORMAT('CREATE OR REPLACE TRIGGER %I
+BEFORE INSERT
+ON %I
+FOR EACH ROW
+EXECUTE PROCEDURE _batch_advisor_ticket_before();', ba_id||'_ticket_before', ba_id||'_ticket');
+
+EXECUTE FORMAT('CREATE OR REPLACE TRIGGER %I
+AFTER INSERT
+ON %I
+FOR EACH ROW
+EXECUTE PROCEDURE _batch_advisor_ticket_after();', ba_id||'_ticket_after', ba_id||'_ticket');
+
+
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION approve_ticket_instructor(req_course_id varchar(6), req_sec_id int)
+---------------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION approve_ticket_instructor(stdid varchar(12), cid varchar(6))
 RETURNS void
-LANGUAGE plpgsql SECURITY DEFINER
+LANGUAGE plpgsql
 AS $$
 DECLARE
-req_sem int;
-req_year int;
-instructor_id int;
+curr record;
+secid int;
 BEGIN
-select course_offerings.sem, course_offerings.yr, course_offerings.instructor_id into req_sem, req_year, instructor_id from course_offerings where course_offerings.course_id = req_course_id and course_offerings.section_id = req_sec_id;
-execute format('INSERT into %I values(%L, %L, %L, %L, %L, %L);', instructor_id || '_ticket', req_course_id, req_sec_id, req_sem, req_year, now(), 'waiting');
+IF current_user NOT IN (SELECT teacher_id from instructor_record) THEN
+RAISE EXCEPTION 'Wrong user/function!';
+END IF;
+EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
+EXECUTE FORMAT('SELECT section_id from %I where student_id = %L and course_id = %L;', current_user||'_ticket', stdid, cid) INTO secid; 
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', current_user||'_ticket', stdid, cid, secid, curr.sem, curr.yr, "Approved by Instructor");
 END;
 $$;
 
------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION reject_ticket_instructor(stdid varchar(12), cid varchar(6))
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+curr record;
+secid int;
+BEGIN
+EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
+EXECUTE FORMAT('SELECT section_id from %I where student_id = %L and course_id = %L;', current_user||'_ticket', stdid, cid) INTO secid; 
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', current_user||'_ticket', stdid, cid, secid, curr.sem, curr.yr, "Rejected by Instructor");
+END;
+$$;
+
+---------------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION approve_ticket_badvisor(stdid varchar(12), cid varchar(6))
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+curr record;
+secid int;
+BEGIN
+EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
+EXECUTE FORMAT('SELECT section_id from %I where student_id = %L and course_id = %L;', current_user||'_ticket', stdid, cid) INTO secid; 
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', current_user||'_ticket', stdid, cid, secid, curr.sem, curr.yr, "Approved by Instructor");
+END;
+$$;
+
+---------------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION reject_ticket_badvisor(stdid varchar(12), cid varchar(6))
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+curr record;
+secid int;
+BEGIN
+EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
+EXECUTE FORMAT('SELECT section_id from %I where student_id = %L and course_id = %L;', current_user||'_ticket', stdid, cid) INTO secid; 
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', current_user||'_ticket', stdid, cid, secid, curr.sem, curr.yr, "Rejected by Instructor");
+END;
+$$;
+
+---------------------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION get_grades_from_csv(course_id varchar(6), section_id int, file_name varchar(50))
 RETURNS void
