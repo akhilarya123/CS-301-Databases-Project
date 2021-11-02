@@ -131,7 +131,7 @@ AS $$
 DECLARE
 curr record;
 BEGIN
-IF course_id NOT IN (SELECT course_id from course_catalogue) THEN
+IF course_id NOT IN (SELECT course_catalogue.course_id from course_catalogue) THEN
 RAISE EXCEPTION 'Course ID does not exist';
 END IF;
 IF teacher_id NOT IN (SELECT teacher_id from instructor_record) THEN
@@ -692,25 +692,25 @@ EXECUTE FORMAT('GRANT SELECT on %I to %I;', student_id||'_ticket', student_id);
 EXECUTE FORMAT('GRANT INSERT on %I to %I;', student_id||'_ticket', student_id);
 EXECUTE FORMAT('GRANT STD to %I;', student_id);
 
-EXECUTE FORMAT('CREATE TRIGGER %I
+EXECUTE FORMAT('CREATE OR REPLACE TRIGGER %I
 BEFORE INSERT
 ON %I
 FOR EACH ROW
 EXECUTE PROCEDURE _student_enr_before();', student_id||'_enr_before', student_id||'_enr');
 
-EXECUTE FORMAT('CREATE TRIGGER %I
+EXECUTE FORMAT('CREATE OR REPLACE TRIGGER %I
 AFTER INSERT
 ON %I
 FOR EACH ROW
 EXECUTE PROCEDURE _student_enr_after();', student_id||'_enr_after', student_id||'_enr');
 
-EXECUTE FORMAT('CREATE TRIGGER %I
+EXECUTE FORMAT('CREATE OR REPLACE TRIGGER %I
 BEFORE INSERT
 ON %I
 FOR EACH ROW
 EXECUTE PROCEDURE _student_ticket_before();', student_id||'_ticket_before', student_id||'_ticket');
 
-EXECUTE FORMAT('CREATE TRIGGER %I
+EXECUTE FORMAT('CREATE OR REPLACE TRIGGER %I
 AFTER INSERT
 ON %I
 FOR EACH ROW
@@ -749,13 +749,13 @@ EXECUTE FORMAT('GRANT SELECT on %I to %I;', teacher_id||'_ticket', teacher_id);
 EXECUTE FORMAT('GRANT INSERT on %I to %I;', teacher_id||'_ticket', teacher_id);
 EXECUTE FORMAT('GRANT INS to %I;', teacher_id);
 
-EXECUTE FORMAT('CREATE TRIGGER %I
+EXECUTE FORMAT('CREATE OR REPLACE TRIGGER %I
 BEFORE INSERT
 ON %I
 FOR EACH ROW
 EXECUTE PROCEDURE _instructor_ticket_before();', teacher_id||'_ticket_before', teacher_id||'_ticket');
 
-EXECUTE FORMAT('CREATE TRIGGER %I
+EXECUTE FORMAT('CREATE OR REPLACE TRIGGER %I
 AFTER INSERT
 ON %I
 FOR EACH ROW
@@ -795,13 +795,13 @@ EXECUTE FORMAT('GRANT SELECT on %I to %I;', ba_id||'_ticket', ba_id);
 EXECUTE FORMAT('GRANT INSERT on %I to %I;', ba_id||'_ticket', ba_id);
 EXECUTE FORMAT('GRANT BA to %I;', ba_id);
 
-EXECUTE FORMAT('CREATE TRIGGER %I
+EXECUTE FORMAT('CREATE OR REPLACE TRIGGER %I
 BEFORE INSERT
 ON %I
 FOR EACH ROW
 EXECUTE PROCEDURE _batch_advisor_ticket_before();', ba_id||'_ticket_before', ba_id||'_ticket');
 
-EXECUTE FORMAT('CREATE TRIGGER %I
+EXECUTE FORMAT('CREATE OR REPLACE TRIGGER %I
 AFTER INSERT
 ON %I
 FOR EACH ROW
@@ -813,13 +813,13 @@ $$;
 
 ---------------------------------------------------------------------------------------
 
-CREATE TRIGGER dean_ticket_before
+CREATE OR REPLACE TRIGGER dean_ticket_before
 BEFORE INSERT
 ON dean_ticket
 FOR EACH ROW
 EXECUTE PROCEDURE _dean_ticket_before();
 
-CREATE TRIGGER dean_ticket_after
+CREATE OR REPLACE TRIGGER dean_ticket_after
 AFTER INSERT
 ON dean_ticket
 FOR EACH ROW
