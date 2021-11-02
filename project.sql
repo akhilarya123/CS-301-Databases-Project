@@ -87,7 +87,7 @@ GRANT STD to dean WITH ADMIN OPTION;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO dean;
 
 GRANT SELECT ON course_offerings, course_catalogue, prerequisite, batch_req, time_table, student_record,
-current_info, instructor_record to BA, STD, INS;
+current_info, instructor_record, batch_advisor_record to BA, STD, INS;
 
 -------------------------------------------------------------------------------------
 
@@ -367,6 +367,9 @@ s record;
 t record;
 prereq varchar(6);
 BEGIN
+IF current_user = 'postgres' THEN
+RETURN NEW;
+END IF;
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
 IF NEW.course_id NOT IN (select course_offerings.course_id from course_offerings) THEN
 RAISE EXCEPTION 'Course does not exist!';
@@ -443,6 +446,9 @@ DECLARE
 curr record;
 tid varchar(12);
 BEGIN
+IF NEW.approval = 'Approved by Instructor' or 'Rejected by Instructor' or 'Approved by Batch Advisor' or 'Rejected by Batch Advisor' or 'Approved by Dean' or 'Rejected by Dean' THEN
+RETURN NEW;
+END IF;
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
 SELECT teacher_id FROM course_offerings where NEW.course_id = course_offerings.course_id and NEW.section_id = course_offerings.section_id into tid;
 EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', tid||'_ticket', session_user, NEW.course_id, NEW.section_id, curr.sem, curr.yr, 'Pending Instructor Approval');
@@ -501,8 +507,8 @@ IF NEW.approval = 'Pending Instructor Approval' THEN
 RETURN NEW;
 END IF;
 SELECT batch_advisor_record.ba_id FROM batch_advisor_record, student_record where student_id = NEW.student_id and student_record.department = batch_advisor_record.department INTO baid;
-EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', baid||'_ticket', NEW.student_id, NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, 'Pending Batch Advisor Approval');
-EXECUTE FORMAT('INSERT INTO dean_ticket VALUES(%L, %L, %L, %L, %L, %L);', NEW.student_id, NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, NEW.approval);
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', baid||'_ticket', NEW.student_id, NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, NEW.approval);
+EXECUTE FORMAT('DELETE FROM %I WHERE student_id = %L and course_id = %L and approval = ''Pending Instructor Approval'';', session_user||'_ticket', NEW.student_id, NEW.course_id);
 EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', NEW.student_id||'_ticket', NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, now(), NEW.approval);
 RETURN NEW;
 END;
@@ -536,7 +542,7 @@ END IF;
 DO
 $do$
 BEGIN
-IF NOT EXISTS (EXECUTE FORMAT('SELECT * FROM %I where section_id = %L and course_id = %L and student_id = %L and approval = ''Pending Batch Advisor Approval'';'), current_user||'_ticket', NEW.section_id, NEW.course_id, NEW.student_id) THEN
+IF NOT EXISTS (EXECUTE FORMAT('SELECT * FROM %I where section_id = %L and course_id = %L and student_id = %L and approval = ''Approved by Instructor'' or approval = ''Rejected by Instructor'';'), current_user||'_ticket', NEW.section_id, NEW.course_id, NEW.student_id) THEN
 RAISE EXCEPTION 'Incorrect Values! Check again.';
 END IF;
 end;
@@ -552,13 +558,17 @@ RETURNS TRIGGER
 LANGUAGE PLPGSQL SECURITY DEFINER
 AS $$
 DECLARE
-
+approv varchar(50);
 BEGIN
-IF NEW.approval = 'Pending Batch Advisor Approval' THEN
+IF NEW.approval = 'Approved by Instructor' or NEW.approval = 'Rejected by Instructor' THEN
 RETURN NEW;
 END IF;
+EXECUTE FORMAT('SELECT approval from %I WHERE student_id = %L and course_id = %L;', session_user||'_ticket', NEW.student_id, NEW.course_id) into approv;
+EXECUTE FORMAT('INSERT INTO dean_ticket VALUES(%L, %L, %L, %L, %L, %L);', NEW.student_id, NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, approv);
 EXECUTE FORMAT('INSERT INTO dean_ticket VALUES(%L, %L, %L, %L, %L, %L);', NEW.student_id, NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, NEW.approval);
 EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', NEW.student_id||'_ticket', NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, now(), NEW.approval);
+EXECUTE FORMAT('DELETE FROM %I WHERE student_id = %L and course_id = %L and approval = ''Approved by Instructor'';', session_user||'_ticket', NEW.student_id, NEW.course_id);
+EXECUTE FORMAT('DELETE FROM %I WHERE student_id = %L and course_id = %L and approval = ''Rejected by Instructor'';', session_user||'_ticket', NEW.student_id, NEW.course_id);
 RETURN NEW;
 END;
 $$;
@@ -643,7 +653,7 @@ DECLARE
 cred real;
 BEGIN
 
-IF NEW.approval = 'Pending Dean Approval' THEN
+IF NEW.approval = 'Approved by Instructor' or NEW.approval = 'Rejected by Instructor' or NEW.approval = 'Approved by Batch Advisor' or NEW.approval = 'Rejected by Batch Advisor' THEN
 RETURN NEW;
 END IF;
 
@@ -654,6 +664,10 @@ EXECUTE FORMAT('INSERT INTO %I VALUES(%L);', NEW.course_id||'_'||NEW.section_id|
 SELECT credits FROM course_catalogue where course_id = NEW.course_id into cred;
 EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L);', NEW.section_id||'_enr', NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, cred);
 END IF;
+EXECUTE FORMAT('DELETE FROM %I WHERE student_id = %L and course_id = %L and approval = ''Approved by Instructor'';', 'dean_ticket', NEW.student_id, NEW.course_id);
+EXECUTE FORMAT('DELETE FROM %I WHERE student_id = %L and course_id = %L and approval = ''Rejected by Instructor'';', 'dean_ticket', NEW.student_id, NEW.course_id);
+EXECUTE FORMAT('DELETE FROM %I WHERE student_id = %L and course_id = %L and approval = ''Approved by Branch Advisor'';', 'dean_ticket', NEW.student_id, NEW.course_id);
+EXECUTE FORMAT('DELETE FROM %I WHERE student_id = %L and course_id = %L and approval = ''Rejected by Branch Advisor'';', 'dean_ticket', NEW.student_id, NEW.course_id);
 
 RETURN NEW;
 END;
