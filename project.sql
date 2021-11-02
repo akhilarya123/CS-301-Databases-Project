@@ -965,7 +965,7 @@ EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into c
 EXECUTE FORMAT('SELECT credits FROM course_catalogue WHERE course_id = %L', course_id) INTO cred; 
 
 FOR r IN (EXECUTE FORMAT('SELECT * FROM %I;', course_id||'_'||section_id||'_grades')) loop
-EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L);', r.student_id, course_id, curr.sem, curr.yr, cred, r.grade);
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L);', r.student_id||'_tt', course_id, curr.sem, curr.yr, cred, r.grade);
 END loop;
 
 END;
@@ -985,17 +985,6 @@ END;
 $$;
 
 ---------------------------------------------------------------------------------------
-
-CREATE OR REPLACE FUNCTION show_transcript(course_id varchar(6), section_id int, file_name varchar(50))
-RETURNS void
-LANGUAGE PLPGSQL
-AS $$
-
-BEGIN
-
-
-END;
-$$;
 
 -------------------------------------------------------------------------------------
 
@@ -1037,7 +1026,7 @@ IF cred = 0 THEN
 RAISE NOTICE 'No courses found for the selected semester';
 RETURN;
 END IF;
-EXECUTE FORMAT('SELECT * FROM %I WHERE ;', student_id||'_tt');
+EXECUTE FORMAT('SELECT * FROM %I WHERE sem = %L and yr = %L;', student_id||'_tt', sem, yr);
 RAISE NOTICE 'SGPA is: %', grade/cred;
 RAISE NOTICE 'Total Credits: %', cred;
 RETURN;

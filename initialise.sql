@@ -6,26 +6,45 @@
  INSERT INTO course_catalogue VALUES ('ge103',3,2,1,1,6);
  select new_student('csb1','akhil',2019,'cs');
  select new_student('csb2','adi',2019,'cs');
- select new_student('csb3','rahul',2019,'mec');
- select new_student('csb4','rohan',2019,'mec');
+ select new_student('csb3','rahul',2019,'me');
+ select new_student('csb4','rohan',2019,'me');
  select new_student('csb5','raghav',2019,'ec');
  select new_student('csb6','raghav',2019,'ec');
  select new_instructor('ins1','gunturi','cs');
  select new_instructor('ins2','hansan','cs');
  select new_instructor('ins3','dewan','cs');
  select new_instructor('ins4','mathpal','cs');
- select new_instructor('ins5','sarit','mec');
+ select new_instructor('ins5','sarit','me');
  select new_instructor('ins6','robert','cs');
  INSERT INTO course_offerings VALUES ('cs301',1,2019,'ins1',1,0);
+ INSERT INTO batch_req VALUES ('cs301','cs',2019);
+ INSERT INTO batch_req VALUES ('cs301','ec',2019);
  INSERT INTO course_offerings VALUES ('cs302',1,2019,'ins2',1,0);
+ INSERT INTO batch_req VALUES ('cs302','cs',2019);
+ INSERT INTO batch_req VALUES ('cs302','ec',2019);
  INSERT INTO course_offerings VALUES ('cs303',2,2019,'ins3',1,0);
+ INSERT INTO batch_req VALUES ('cs303','cs',2019);
+ INSERT INTO batch_req VALUES ('cs303','ec',2019);
  INSERT INTO course_offerings VALUES ('cs304',1,2019,'ins4',1,0);
+ INSERT INTO batch_req VALUES ('cs304','cs',2019);
+ INSERT INTO batch_req VALUES ('cs304','ec',2019);
  INSERT INTO course_offerings VALUES ('cs201',1,2019,'ins5',1,0);
+ INSERT INTO batch_req VALUES ('cs201','ec',2019);
+ INSERT INTO batch_req VALUES ('cs201','me',2019);
  INSERT INTO course_offerings VALUES ('ge103',1,2019,'ins6',1,0);
+ INSERT INTO batch_req VALUES ('ge103','ec',2019);
+ INSERT INTO batch_req VALUES ('ge103','me',2019);
  \c - csb1;
  select enrol('cs301',1);
  select enrol('cs302',1);
  select enrol('cs303',1);
  select enrol('cs304',1);
+ \c - csb5;
+ select enrol('cs301',1);
+ select enrol('cs302',1);
+ select enrol('cs303',1);
+ select enrol('cs304',1);
+ select enrol('ge103',1);
+ -- select enrol('cs201',1); This will give error , credits limit is exceeded for this student , to enroll generate ticket
  
  
