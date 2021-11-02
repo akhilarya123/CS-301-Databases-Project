@@ -974,7 +974,7 @@ END loop;
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
 EXECUTE FORMAT('SELECT credits FROM course_catalogue WHERE course_id = %L', course_id) INTO cred; 
 
-FOR r IN (EXECUTE FORMAT('SELECT * FROM %I;', course_id||'_'||section_id||'_grades')) loop
+FOR r IN EXECUTE FORMAT('SELECT * FROM %I;', course_id||'_'||section_id||'_grades') loop
 EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L);', r.student_id||'_tt', course_id, curr.sem, curr.yr, cred, r.grade);
 END loop;
 
