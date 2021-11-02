@@ -85,7 +85,6 @@ GRANT BA to dean WITH ADMIN OPTION;
 GRANT INS to dean WITH ADMIN OPTION;
 GRANT STD to dean WITH ADMIN OPTION;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO dean;
-GRANT USAGE ON schema public to dean;
 
 GRANT SELECT ON course_offerings, course_catalogue, prerequisite, batch_req, time_table, student_record,
 current_info, instructor_record to BA, STD, INS;
@@ -97,7 +96,7 @@ RETURNS TRIGGER
 LANGUAGE PLPGSQL
 AS $$
 DECLARE
-stdid varchar(12);
+
 BEGIN
 
 EXECUTE FORMAT('CREATE TABLE %I(
@@ -177,6 +176,7 @@ END;
 $$;
 
 -------------------------------------------------------------------------------------
+
 CREATE OR REPLACE FUNCTION get_cgpa()
 RETURNS real
 LANGUAGE PLPGSQL
@@ -200,6 +200,7 @@ END;
 $$;
 
 -------------------------------------------------------------------------------------
+
 CREATE OR REPLACE FUNCTION get_prev_creds()
 RETURNS real
 LANGUAGE PLPGSQL
@@ -244,6 +245,7 @@ END;
 $$;
 
 -------------------------------------------------------------------------------------
+
 CREATE OR REPLACE FUNCTION _student_enr_before()
 RETURNS TRIGGER
 LANGUAGE PLPGSQL
@@ -571,6 +573,7 @@ val := val-1;
 END IF;
 end;
 $do$;
+DO
 $do$
 BEGIN
 IF NOT EXISTS (EXECUTE FORMAT('SELECT * FROM %I where section_id = %L and course_id = %L and student_id = %L and approval = ''Rejected by Instructor'';'), 'dean_ticket', NEW.section_id, NEW.course_id, NEW.student_id) THEN
@@ -592,6 +595,7 @@ val := val-1;
 END IF;
 end;
 $do$;
+DO
 $do$
 BEGIN
 IF NOT EXISTS (EXECUTE FORMAT('SELECT * FROM %I where section_id = %L and course_id = %L and student_id = %L and approval = ''Rejected by Batch Advisor'';'), 'dean_ticket', NEW.section_id, NEW.course_id, NEW.student_id) THEN
@@ -929,6 +933,114 @@ AS $$
 
 BEGIN
 
-EXECUTE FORMAT('COPY  %I FROM %L  DELIMITER %L CSV HEADER ;', course_id||'_'||section_id||'_grades',file_name,',');
+EXECUTE FORMAT('COPY  %I FROM %L  DELIMITER %L CSV HEADER ;', course_id||'_'||section_id||'_grades', file_name, ',');
+END;
+$$;
+
+---------------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION set_grades(course_id varchar(6), section_id int)
+RETURNS void
+LANGUAGE PLPGSQL
+AS $$
+DECLARE
+r record;
+curr record;
+cred real;
+BEGIN
+
+FOR r IN (EXECUTE FORMAT('SELECT * FROM %I;', course_id||'_'||section_id||'_students')) loop
+IF r.student_id NOT IN EXECUTE FORMAT('SELECT * FROM %I;', course_id||'_'||section_id||'_grades') THEN
+RAISE EXCEPTION 'Grade for % is not present', r.student_id;
+END IF;
+END loop;
+
+FOR r IN (EXECUTE FORMAT('SELECT * FROM %I;', course_id||'_'||section_id||'_grades')) loop
+IF r.student_id NOT IN EXECUTE FORMAT('SELECT * FROM %I;', course_id||'_'||section_id||'_students') THEN
+RAISE EXCEPTION 'Student % is not enrolled, yet has a grade present', r.student_id;
+END IF;
+END loop;
+
+EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
+EXECUTE FORMAT('SELECT credits FROM course_catalogue WHERE course_id = %L', course_id) INTO cred; 
+
+FOR r IN (EXECUTE FORMAT('SELECT * FROM %I;', course_id||'_'||section_id||'_grades')) loop
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L);', r.student_id, course_id, curr.sem, curr.yr, cred, r.grade);
+END loop;
+
+END;
+$$;
+
+---------------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION get_time_table_from_csv(file_name varchar(50))
+RETURNS void
+LANGUAGE PLPGSQL
+AS $$
+
+BEGIN
+
+EXECUTE FORMAT('COPY  %I FROM %L  DELIMITER %L CSV HEADER ;', 'time_table', file_name, ',');
+END;
+$$;
+
+---------------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION show_transcript(course_id varchar(6), section_id int, file_name varchar(50))
+RETURNS void
+LANGUAGE PLPGSQL
+AS $$
+
+BEGIN
+
+
+END;
+$$;
+
+-------------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION show_transcript(student_id varchar(12), sem int, yr int)
+RETURNS void
+LANGUAGE PLPGSQL
+AS $$
+DECLARE
+r record;
+grade real;
+cred real;
+BEGIN
+grade :=0;
+cred :=0;
+
+IF yr = 0 THEN
+
+for r in EXECUTE FORMAT('SELECT * FROM %I;', student_id||'_tt')  loop
+grade := grade + r.credits*r.grade;
+cred := cred + r.credits;
+END loop;
+IF cred = 0 THEN
+RAISE NOTICE 'No courses found';
+RETURN;
+END IF;
+EXECUTE FORMAT('SELECT * FROM %I;', student_id||'_tt');
+RAISE NOTICE 'CGPA is: %', grade/cred;
+RAISE NOTICE 'Total Credits: %', cred;
+RETURN;
+END IF;
+
+for r in EXECUTE FORMAT('SELECT * FROM %I;', student_id||'_tt')  loop
+IF r.sem = sem and r.yr = yr THEN
+grade := grade + r.credits*r.grade;
+cred := cred + r.credits;
+END IF;
+END loop;
+IF cred = 0 THEN
+RAISE NOTICE 'No courses found for the selected semester';
+RETURN;
+END IF;
+EXECUTE FORMAT('SELECT * FROM %I WHERE ;', student_id||'_tt');
+RAISE NOTICE 'SGPA is: %', grade/cred;
+RAISE NOTICE 'Total Credits: %', cred;
+RETURN;
+
 END;
 $$;
