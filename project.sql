@@ -85,7 +85,7 @@ GRANT BA to dean WITH ADMIN OPTION;
 GRANT INS to dean WITH ADMIN OPTION;
 GRANT STD to dean WITH ADMIN OPTION;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO dean;
-GRANT USAGE ON schema public to dean;
+--GRANT USAGE ON schema public to dean;
 
 GRANT SELECT ON course_offerings, course_catalogue, prerequisite, batch_req, time_table, student_record,
 current_info, instructor_record to BA, STD, INS;
