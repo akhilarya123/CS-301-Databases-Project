@@ -400,7 +400,7 @@ END IF;
 
 r:=row(null);
 FOR prereq in EXECUTE FORMAT('SELECT prereq from prerequisite where prerequisite.course_id = %L;', NEW.course_id) loop
-EXECUTE FORMAT('SELECT * FROM %I where prereq = %I.course_id;', current_user||'_tt', current_user||'_tt') INTO r;
+EXECUTE FORMAT('SELECT * FROM %I where  course_id = %L;', current_user||'_tt', prereq) INTO r;
 IF r is null THEN
 RAISE EXCEPTION 'Prerequisites not matched!';
 END IF;
