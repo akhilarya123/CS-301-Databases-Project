@@ -68,7 +68,7 @@ CREATE TABLE dean_ticket(
     section_id integer not null,
     sem integer not null,
     yr integer not null,
-    approval varchar(30) not null,
+    approval varchar(50) not null,
     primary key(student_id, course_id, sem, yr, approval)
 );
 
@@ -497,6 +497,9 @@ AS $$
 DECLARE
 baid varchar(12);
 BEGIN
+IF NEW.approval = 'Pending Instructor Approval' THEN
+RETURN NEW;
+END IF;
 SELECT batch_advisor_record.ba_id FROM batch_advisor_record, student_record where student_id = NEW.student_id and student_record.department = batch_advisor_record.department INTO baid;
 EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', baid||'_ticket', NEW.student_id, NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, 'Pending Batch Advisor Approval');
 EXECUTE FORMAT('INSERT INTO dean VALUES(%L, %L, %L, %L, %L, %L);', NEW.student_id, NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, NEW.approval);
@@ -551,7 +554,9 @@ AS $$
 DECLARE
 
 BEGIN
-
+IF NEW.approval = 'Pending Batch Advisor Approval' THEN
+RETURN NEW;
+END IF;
 EXECUTE FORMAT('INSERT INTO dean_ticket VALUES(%L, %L, %L, %L, %L, %L);', NEW.student_id, NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, NEW.approval);
 EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', NEW.student_id||'_ticket', NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, now(), NEW.approval);
 RETURN NEW;
@@ -638,6 +643,10 @@ DECLARE
 cred real;
 BEGIN
 
+IF NEW.approval = 'Pending Dean Approval' THEN
+RETURN NEW;
+END IF;
+
 EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', NEW.student_id||'_ticket', NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, now(), NEW.approval);
 
 IF NEW.approval = 'Approved by Dean' THEN
@@ -693,7 +702,7 @@ EXECUTE FORMAT('CREATE TABLE %I(
     sem integer not null,
     yr integer not null,
     time_stamp TIMESTAMP not null,
-    approval varchar(30) not null,
+    approval varchar(50) not null,
     
     primary key(course_id, sem, yr, approval)
 );', student_id||'_ticket');
@@ -756,7 +765,7 @@ EXECUTE FORMAT('CREATE TABLE %I(
     section_id integer not null,
     sem integer not null,
     yr integer not null,
-    approval varchar(30) not null,
+    approval varchar(50) not null,
     primary key(student_id, course_id, sem, yr, approval)
 );', teacher_id||'_ticket');
 
@@ -802,7 +811,7 @@ EXECUTE FORMAT('CREATE TABLE %I(
     section_id integer not null,
     sem integer not null,
     yr integer not null,
-    approval varchar(30) not null,
+    approval varchar(50) not null,
     primary key(student_id, course_id, sem, yr, approval)
 );', ba_id||'_ticket');
 
