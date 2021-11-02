@@ -445,7 +445,7 @@ tid varchar(12);
 BEGIN
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
 SELECT * FROM course_offerings where NEW.course_id = course_offerings.course_id and NEW.section_id = course_offerings.section_id into tid;
-EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', tid||'_ticket', session_user, NEW.course_id, NEW.section_id, curr.sem, curr.yr, "Pending Instructor Approval");
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', tid||'_ticket', session_user, NEW.course_id, NEW.section_id, curr.sem, curr.yr, 'Pending Instructor Approval');
 
 RETURN NEW;
 END;
@@ -460,6 +460,9 @@ AS $$
 DECLARE
 curr record;
 BEGIN
+IF current_user = 'postgres' THEN
+RETURN NEW;
+END IF;
 IF current_user NOT IN (SELECT teacher_id from instructor_record) THEN
 RAISE EXCEPTION 'Wrong user/function!';
 END IF;
@@ -511,6 +514,9 @@ AS $$
 DECLARE
 curr record;
 BEGIN
+IF current_user = 'postgres' THEN
+RETURN NEW;
+END IF;
 IF current_user NOT IN (SELECT ba_id from batch_advisor_record) THEN
 RAISE EXCEPTION 'Wrong user/function!';
 END IF;
@@ -562,7 +568,9 @@ DECLARE
 curr record;
 val int;
 BEGIN
-
+IF current_user = 'postgres' THEN
+RETURN NEW;
+END IF;
 IF NEW.approval != 'Approved by Dean' AND NEW.approval != 'Rejected by Dean' THEN
 RAISE EXCEPTION 'Wrong Approval!';
 END IF;
