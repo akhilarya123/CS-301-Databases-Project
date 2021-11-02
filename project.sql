@@ -307,6 +307,9 @@ EXECUTE FORMAT('SELECT * FROM %I where  course_id = %L;', current_user||'_tt', p
 IF r is null THEN
 RAISE EXCEPTION 'Prerequisites not matched!';
 END IF;
+IF r.grade<4 THEN
+RAISE EXCEPTION 'Prerequisites not matched! Failed in %.', r.course_id;
+END IF;
 END loop;
 
 FOR r IN (SELECT * FROM time_table where NEW.course_id = time_table.course_id) loop
@@ -403,6 +406,9 @@ FOR prereq in EXECUTE FORMAT('SELECT prereq from prerequisite where prerequisite
 EXECUTE FORMAT('SELECT * FROM %I where  course_id = %L;', current_user||'_tt', prereq) INTO r;
 IF r is null THEN
 RAISE EXCEPTION 'Prerequisites not matched!';
+END IF;
+IF r.grade<4 THEN
+RAISE EXCEPTION 'Prerequisites not matched! Failed in %.', r.course_id;
 END IF;
 END loop;
 
