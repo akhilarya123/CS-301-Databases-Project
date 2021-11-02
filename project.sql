@@ -387,7 +387,7 @@ RAISE EXCEPTION 'Your batch is ineligible for this course!';
 END IF;
 
 r:=row(null);
-FOR prereq in EXECUTE FORMAT('SELECT prereq from prerequisite where NEW.course_id = prerequisite.course_id;') loop
+FOR prereq in EXECUTE FORMAT('SELECT prereq from prerequisite where prerequisite.course_id = %L;', NEW.course_id) loop
 EXECUTE FORMAT('SELECT * FROM %I where prereq = %I.course_id;', current_user||'_tt', current_user||'_tt') INTO r;
 IF r is null THEN
 RAISE EXCEPTION 'Prerequisites not matched!';
