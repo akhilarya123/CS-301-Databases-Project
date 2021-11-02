@@ -1,9 +1,12 @@
  INSERT INTO course_catalogue VALUES ('cs301',4,2,1,1,4);
  INSERT INTO course_catalogue VALUES ('cs302',4,2,1,1,4);
  INSERT INTO course_catalogue VALUES ('cs303',2,2,1,1,3);
- INSERT INTO course_catalogue VALUES ('cs201',3,2,1,1,3);
  INSERT INTO course_catalogue VALUES ('cs304',3,2,1,1,3);
- INSERT INTO course_catalogue VALUES ('ge103',3,2,1,1,6);
+ INSERT INTO course_catalogue VALUES ('cs201',3,2,1,1,3);
+ INSERT INTO course_catalogue VALUES ('ge103',3,2,1,1,4);
+ INSERT INTO course_catalogue VALUES ('ge104',3,2,1,1,4);
+ INSERT INTO course_catalogue VALUES ('ge105',3,2,1,1,4);
+ INSERT INTO course_catalogue VALUES ('ge106',3,2,1,1,4);
  select new_student('csb1','akhil',2019,'cs');
  select new_student('csb2','adi',2019,'cs');
  select new_student('csb3','rahul',2019,'me');
@@ -32,22 +35,30 @@
  select new_course_offering('cs301',1,'ins1',0); 
  INSERT INTO batch_req VALUES ('cs301','cs',2019);
  INSERT INTO batch_req VALUES ('cs301','ec',2019);
- select new_course_offering('cs302',1,'ins2',0); 
+ select new_course_offering('cs302',1,'ins1',0); 
  INSERT INTO batch_req VALUES ('cs302','cs',2019);
  INSERT INTO batch_req VALUES ('cs302','ec',2019);
- select new_course_offering('cs303',1,'ins3',0);
+ select new_course_offering('cs303',1,'ins1',0);
  INSERT INTO batch_req VALUES ('cs303','cs',2019);
  INSERT INTO batch_req VALUES ('cs303','ec',2019);
- select new_course_offering('cs304',1,'ins4',0);
+ select new_course_offering('cs304',1,'ins1',0);
  INSERT INTO batch_req VALUES ('cs304','cs',2019);
  INSERT INTO batch_req VALUES ('cs304','ec',2019);
- select new_course_offering('cs201',1,'ins5',0);
- INSERT INTO batch_req VALUES ('cs201','ec',2019);
+ select new_course_offering('cs201',1,'ins1',0);
+ INSERT INTO batch_req VALUES ('cs201','cs',2019);
  INSERT INTO batch_req VALUES ('cs201','me',2019);
- select new_course_offering('ge103',1,'ins6',0);
- INSERT INTO batch_req VALUES ('ge103','ec',2019);
+ select new_course_offering('ge103',1,'ins1',0);
+ INSERT INTO batch_req VALUES ('ge103','cs',2019);
  INSERT INTO batch_req VALUES ('ge103','me',2019);
- 
+  select new_course_offering('ge104',1,'ins1',0); 
+ INSERT INTO batch_req VALUES ('ge104','cs',2019);
+ INSERT INTO batch_req VALUES ('cs301','ec',2019);
+  select new_course_offering('ge105',1,'ins1',0); 
+ INSERT INTO batch_req VALUES ('ge105','cs',2019);
+ INSERT INTO batch_req VALUES ('cs301','ec',2019);
+ select new_course_offering('ge106',1,'ins1',0); 
+ INSERT INTO batch_req VALUES ('ge106','cs',2019);
+ INSERT INTO batch_req VALUES ('cs301','ec',2019);
  
  
  INSERT INTO time_table VALUES ('cs201',1,1);
@@ -83,6 +94,11 @@
  select enrol('cs302',1);
  select enrol('cs303',1);
  select enrol('cs304',1);
+ select enrol('cs201',1);
+ select enrol('ge103',1);
+ select enrol('ge104',1);
+ select enrol('ge105',1);
+ select enrol('ge106',1);
  \c - csb5;
  select enrol('cs301',1);
  select enrol('cs302',1);
@@ -125,5 +141,6 @@ insert into csb4_tt values ('cs301',1,2021,3,9);
 insert into csb4_tt values ('cs303',1,2021,3,9);
 insert into csb4_tt values ('cs302',2,2021,3,9);
 insert into csb4_tt values ('cs304',1,2021,3,10);
+
 
 
