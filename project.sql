@@ -134,7 +134,7 @@ BEGIN
 IF course_id NOT IN (SELECT course_catalogue.course_id from course_catalogue) THEN
 RAISE EXCEPTION 'Course ID does not exist';
 END IF;
-IF teacher_id NOT IN (SELECT course_catalogue.teacher_id from instructor_record) THEN
+IF teacher_id NOT IN (SELECT instructor_record.teacher_id from instructor_record) THEN
 RAISE EXCEPTION 'Teacher ID does not exist';
 END IF;
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
