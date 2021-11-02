@@ -949,13 +949,13 @@ curr record;
 cred real;
 BEGIN
 
-FOR r IN (EXECUTE FORMAT('SELECT * FROM %I;', course_id||'_'||section_id||'_students')) loop
+FOR r IN EXECUTE FORMAT('SELECT * FROM %I;', course_id||'_'||section_id||'_students') loop
 IF r.student_id NOT IN EXECUTE FORMAT('SELECT * FROM %I;', course_id||'_'||section_id||'_grades') THEN
 RAISE EXCEPTION 'Grade for % is not present', r.student_id;
 END IF;
 END loop;
 
-FOR r IN (EXECUTE FORMAT('SELECT * FROM %I;', course_id||'_'||section_id||'_grades')) loop
+FOR r IN EXECUTE FORMAT('SELECT * FROM %I;', course_id||'_'||section_id||'_grades') loop
 IF r.student_id NOT IN EXECUTE FORMAT('SELECT * FROM %I;', course_id||'_'||section_id||'_students') THEN
 RAISE EXCEPTION 'Student % is not enrolled, yet has a grade present', r.student_id;
 END IF;
