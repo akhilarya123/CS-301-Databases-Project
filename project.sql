@@ -502,7 +502,7 @@ RETURN NEW;
 END IF;
 SELECT batch_advisor_record.ba_id FROM batch_advisor_record, student_record where student_id = NEW.student_id and student_record.department = batch_advisor_record.department INTO baid;
 EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', baid||'_ticket', NEW.student_id, NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, 'Pending Batch Advisor Approval');
-EXECUTE FORMAT('INSERT INTO dean VALUES(%L, %L, %L, %L, %L, %L);', NEW.student_id, NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, NEW.approval);
+EXECUTE FORMAT('INSERT INTO dean_ticket VALUES(%L, %L, %L, %L, %L, %L);', NEW.student_id, NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, NEW.approval);
 EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', NEW.student_id||'_ticket', NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, now(), NEW.approval);
 RETURN NEW;
 END;
