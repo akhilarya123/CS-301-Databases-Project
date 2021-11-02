@@ -62,6 +62,16 @@ CREATE TABLE current_info(
     yr integer not null
 );
 
+CREATE TABLE dean_ticket(
+    student_id varchar(12) not null,
+    course_id varchar(6) not null,
+    section_id integer not null,
+    sem integer not null,
+    yr integer not null,
+    approval varchar(30) not null,
+    primary key(student_id, course_id, sem, yr, approval)
+);
+
 INSERT INTO current_info values('curr', 1, 2021);
 
 -------------------------------------------------------------------------------------
@@ -146,7 +156,7 @@ cred real;
 BEGIN
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
 EXECUTE FORMAT('SELECT c.credits from course_catalogue c where c.course_id = course_id;') into cred;
-EXECUTE FORMAT('INSERT INTO %I values(%L, %L, %L, %L);', current_user||'_enr', course_id, section_id, curr.sem, curr.yr, now(), "Pending Instructor Approval");
+EXECUTE FORMAT('INSERT INTO %I values(%L, %L, %L, %L);', current_user||'_enr', course_id, section_id, curr.sem, curr.yr, now(), "Raised Ticket");
 END;
 $$;
 
@@ -275,7 +285,7 @@ criteria := 11;
 SELECT get_cgpa() into cgpa;
 SELECT cgpa_criteria FROM course_offerings where NEW.course_id = course_offerings.course_id into criteria;
 IF cgpa<criteria and criteria<11 THEN
-RAISE EXCEPTION 'CGPA too low!';
+RAISE EXCEPTION 'CGPA too low! Current: %, Required: %', cgpa, criteria;
 END IF;
 
 flag := 0;
@@ -372,7 +382,7 @@ criteria := 11;
 SELECT get_cgpa() into cgpa;
 SELECT cgpa_criteria FROM course_offerings where NEW.course_id = course_offerings.course_id into criteria;
 IF cgpa<criteria and criteria<11 THEN
-RAISE EXCEPTION 'CGPA too low!';
+RAISE EXCEPTION 'CGPA too low! Current: %, Required: %', cgpa, criteria;
 END IF;
 
 flag := 0;
@@ -448,6 +458,10 @@ IF NEW.approval != 'Approved by Instructor' AND NEW.approval != 'Rejected by Ins
 RAISE EXCEPTION 'Wrong Approval!';
 END IF;
 
+IF NEW.sem != curr.sem OR NEW.yr != curr.yr THEN
+RAISE EXCEPTION 'Incorrect semester!';
+END IF;
+
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
 DO
 $do$
@@ -496,6 +510,10 @@ RAISE EXCEPTION 'Wrong Approval!';
 END IF;
 
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
+IF NEW.sem != curr.sem OR NEW.yr != curr.yr THEN
+RAISE EXCEPTION 'Incorrect semester!';
+END IF;
+
 DO
 $do$
 BEGIN
@@ -515,12 +533,99 @@ RETURNS TRIGGER
 LANGUAGE PLPGSQL SECURITY DEFINER
 AS $$
 DECLARE
-baid varchar(12);
+
 BEGIN
-SELECT batch_advisor_record.ba_id FROM batch_advisor_record, student_record where student_id = NEW.student_id and student_record.department = batch_advisor_record.department INTO baid;
-EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', baid||'_ticket', NEW.student_id, NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, 'Pending BA Approval');
-EXECUTE FORMAT('INSERT INTO dean VALUES(%L, %L, %L, %L, %L, %L);', NEW.student_id, NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, NEW.approval);
+
+EXECUTE FORMAT('INSERT INTO dean_ticket VALUES(%L, %L, %L, %L, %L, %L);', NEW.student_id, NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, NEW.approval);
 EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', NEW.student_id||'_ticket', NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, now(), NEW.approval);
+RETURN NEW;
+END;
+$$;
+
+-------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION _dean_ticket_before()
+RETURNS TRIGGER
+LANGUAGE PLPGSQL SECURITY DEFINER
+AS $$
+DECLARE
+curr record;
+val int;
+BEGIN
+
+IF NEW.approval != 'Approved by Dean' AND NEW.approval != 'Rejected by Dean' THEN
+RAISE EXCEPTION 'Wrong Approval!';
+END IF;
+
+EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
+IF NEW.sem != curr.sem OR NEW.yr != curr.yr THEN
+RAISE EXCEPTION 'Incorrect semester!';
+END IF;
+
+val := 2;
+DO
+$do$
+BEGIN
+IF NOT EXISTS (EXECUTE FORMAT('SELECT * FROM %I where section_id = %L and course_id = %L and student_id = %L and approval = ''Approved by Instructor'';'), 'dean_ticket', NEW.section_id, NEW.course_id, NEW.student_id) THEN
+val := val-1;
+END IF;
+end;
+$do$;
+$do$
+BEGIN
+IF NOT EXISTS (EXECUTE FORMAT('SELECT * FROM %I where section_id = %L and course_id = %L and student_id = %L and approval = ''Rejected by Instructor'';'), 'dean_ticket', NEW.section_id, NEW.course_id, NEW.student_id) THEN
+val := val-1;
+END IF;
+end;
+$do$;
+
+IF val = 0 THEN
+RAISE EXCEPTION 'Waiting For Instructor Approval!';
+END IF;
+
+val := 2;
+DO
+$do$
+BEGIN
+IF NOT EXISTS (EXECUTE FORMAT('SELECT * FROM %I where section_id = %L and course_id = %L and student_id = %L and approval = ''Approved by Batch Advisor'';'), 'dean_ticket', NEW.section_id, NEW.course_id, NEW.student_id) THEN
+val := val-1;
+END IF;
+end;
+$do$;
+$do$
+BEGIN
+IF NOT EXISTS (EXECUTE FORMAT('SELECT * FROM %I where section_id = %L and course_id = %L and student_id = %L and approval = ''Rejected by Batch Advisor'';'), 'dean_ticket', NEW.section_id, NEW.course_id, NEW.student_id) THEN
+val := val-1;
+END IF;
+end;
+$do$;
+
+IF val = 0 THEN
+RAISE EXCEPTION 'Waiting For Batch Advisor Approval!';
+END IF;
+
+RETURN NEW;
+END;
+$$;
+
+-------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION _dean_ticket_after()
+RETURNS TRIGGER
+LANGUAGE PLPGSQL SECURITY DEFINER
+AS $$
+DECLARE
+cred real;
+BEGIN
+
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', NEW.student_id||'_ticket', NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, now(), NEW.approval);
+
+IF NEW.approval = 'Approved by Dean' THEN
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L);', NEW.course_id||'_'||NEW.section_id||'_students', NEW.student_id);
+SELECT credits FROM course_catalogue where course_id = NEW.course_id into cred;
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L);', NEW.section_id||'_enr', NEW.course_id, NEW.section_id, NEW.sem, NEW.yr, cred);
+END IF;
+
 RETURN NEW;
 END;
 $$;
@@ -704,6 +809,20 @@ $$;
 
 ---------------------------------------------------------------------------------------
 
+CREATE OR REPLACE TRIGGER dean_ticket_before
+BEFORE INSERT
+ON dean_ticket
+FOR EACH ROW
+EXECUTE PROCEDURE _dean_ticket_before();
+
+CREATE OR REPLACE TRIGGER dean_ticket_after
+AFTER INSERT
+ON dean_ticket
+FOR EACH ROW
+EXECUTE PROCEDURE _dean_ticket_after();
+
+---------------------------------------------------------------------------------------
+
 CREATE OR REPLACE FUNCTION approve_ticket_instructor(stdid varchar(12), cid varchar(6))
 RETURNS void
 LANGUAGE plpgsql
@@ -766,6 +885,38 @@ BEGIN
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
 EXECUTE FORMAT('SELECT section_id from %I where student_id = %L and course_id = %L;', current_user||'_ticket', stdid, cid) INTO secid; 
 EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', current_user||'_ticket', stdid, cid, secid, curr.sem, curr.yr, "Rejected by Batch Advisor");
+END;
+$$;
+
+---------------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION approve_ticket_dean(stdid varchar(12), cid varchar(6))
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+curr record;
+secid int;
+BEGIN
+EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
+EXECUTE FORMAT('SELECT section_id from %I where student_id = %L and course_id = %L;', current_user||'_ticket', stdid, cid) INTO secid; 
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', current_user||'_ticket', stdid, cid, secid, curr.sem, curr.yr, "Approved by Dean");
+END;
+$$;
+
+---------------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION reject_ticket_dean(stdid varchar(12), cid varchar(6))
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+curr record;
+secid int;
+BEGIN
+EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
+EXECUTE FORMAT('SELECT section_id from %I where student_id = %L and course_id = %L;', current_user||'_ticket', stdid, cid) INTO secid; 
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', current_user||'_ticket', stdid, cid, secid, curr.sem, curr.yr, "Rejected by Dean");
 END;
 $$;
 
