@@ -155,7 +155,7 @@ cred real;
 BEGIN
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
 EXECUTE FORMAT('SELECT c.credits from course_catalogue c where c.course_id = course_id;') into cred;
-EXECUTE FORMAT('INSERT INTO %I values(%L, %L, %L, %L);', current_user||'_enr', course_id, section_id, curr.sem, curr.yr, now(), "Raised Ticket");
+EXECUTE FORMAT('INSERT INTO %I values(%L, %L, %L, %L, %L, %L);', current_user||'_tt', course_id, section_id, curr.sem, curr.yr, now(), "Raised Ticket");
 END;
 $$;
 
