@@ -485,7 +485,7 @@ END IF;
 DO
 $do$
 BEGIN
-IF NOT EXISTS (EXECUTE FORMAT('SELECT * FROM %I where section_id = %L and course_id = %L and student_id = %L and approval = ''Pending Instructor Approval'';'), current_user||'_ticket', NEW.section_id, NEW.course_id, NEW.student_id) THEN
+IF NOT EXISTS (EXECUTE FORMAT('SELECT * FROM %I where section_id = %L and course_id = %L and student_id = %L and approval = ''Pending Instructor Approval'';', current_user||'_ticket', NEW.section_id, NEW.course_id, NEW.student_id)) THEN
 RAISE EXCEPTION 'Incorrect Values! Check again.';
 END IF;
 end;
@@ -522,6 +522,7 @@ LANGUAGE PLPGSQL
 AS $$
 DECLARE
 curr record;
+val int;
 BEGIN
 IF current_user = 'postgres' THEN
 RETURN NEW;
@@ -538,11 +539,17 @@ EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into c
 IF NEW.sem != curr.sem OR NEW.yr != curr.yr THEN
 RAISE EXCEPTION 'Incorrect semester!';
 END IF;
-
+val := 2;
 DO
 $do$
 BEGIN
-IF NOT EXISTS (EXECUTE FORMAT('SELECT * FROM %I where section_id = %L and course_id = %L and student_id = %L and approval = ''Approved by Instructor'' or approval = ''Rejected by Instructor'';'), current_user||'_ticket', NEW.section_id, NEW.course_id, NEW.student_id) THEN
+IF NOT EXISTS (EXECUTE FORMAT('SELECT * FROM %I where section_id = %L and course_id = %L and student_id = %L and approval = ''Approved by Instructor'';', current_user||'_ticket', NEW.section_id, NEW.course_id, NEW.student_id)) THEN
+val := val-1;
+END IF;
+IF NOT EXISTS (EXECUTE FORMAT('SELECT * FROM %I where section_id = %L and course_id = %L and student_id = %L and approval = ''Rejected by Instructor'';', current_user||'_ticket', NEW.section_id, NEW.course_id, NEW.student_id)) THEN
+val := val-1;
+END IF;
+IF val = 0
 RAISE EXCEPTION 'Incorrect Values! Check again.';
 END IF;
 end;
@@ -599,7 +606,7 @@ val := 2;
 DO
 $do$
 BEGIN
-IF NOT EXISTS (EXECUTE FORMAT('SELECT * FROM %I where section_id = %L and course_id = %L and student_id = %L and approval = ''Approved by Instructor'';'), 'dean_ticket', NEW.section_id, NEW.course_id, NEW.student_id) THEN
+IF NOT EXISTS (EXECUTE FORMAT('SELECT * FROM %I where section_id = %L and course_id = %L and student_id = %L and approval = ''Approved by Instructor'';', 'dean_ticket', NEW.section_id, NEW.course_id, NEW.student_id)) THEN
 val := val-1;
 END IF;
 end;
@@ -607,7 +614,7 @@ $do$;
 DO
 $do$
 BEGIN
-IF NOT EXISTS (EXECUTE FORMAT('SELECT * FROM %I where section_id = %L and course_id = %L and student_id = %L and approval = ''Rejected by Instructor'';'), 'dean_ticket', NEW.section_id, NEW.course_id, NEW.student_id) THEN
+IF NOT EXISTS (EXECUTE FORMAT('SELECT * FROM %I where section_id = %L and course_id = %L and student_id = %L and approval = ''Rejected by Instructor'';', 'dean_ticket', NEW.section_id, NEW.course_id, NEW.student_id)) THEN
 val := val-1;
 END IF;
 end;
@@ -621,7 +628,7 @@ val := 2;
 DO
 $do$
 BEGIN
-IF NOT EXISTS (EXECUTE FORMAT('SELECT * FROM %I where section_id = %L and course_id = %L and student_id = %L and approval = ''Approved by Batch Advisor'';'), 'dean_ticket', NEW.section_id, NEW.course_id, NEW.student_id) THEN
+IF NOT EXISTS (EXECUTE FORMAT('SELECT * FROM %I where section_id = %L and course_id = %L and student_id = %L and approval = ''Approved by Batch Advisor'';', 'dean_ticket', NEW.section_id, NEW.course_id, NEW.student_id)) THEN
 val := val-1;
 END IF;
 end;
@@ -629,7 +636,7 @@ $do$;
 DO
 $do$
 BEGIN
-IF NOT EXISTS (EXECUTE FORMAT('SELECT * FROM %I where section_id = %L and course_id = %L and student_id = %L and approval = ''Rejected by Batch Advisor'';'), 'dean_ticket', NEW.section_id, NEW.course_id, NEW.student_id) THEN
+IF NOT EXISTS (EXECUTE FORMAT('SELECT * FROM %I where section_id = %L and course_id = %L and student_id = %L and approval = ''Rejected by Batch Advisor'';', 'dean_ticket', NEW.section_id, NEW.course_id, NEW.student_id)) THEN
 val := val-1;
 END IF;
 end;
