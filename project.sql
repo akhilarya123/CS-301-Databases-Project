@@ -377,7 +377,7 @@ END IF;
 
 flag := 0;
 SELECT * from student_record where current_user = student_record.student_id into s;
-for r in EXECUTE FORMAT('SELECT * FROM batch_req where NEW.course_id = batch_req.course_id;') loop
+for r in EXECUTE FORMAT('SELECT * FROM batch_req where %L = batch_req.course_id;', NEW.course_id) loop
 IF r.yr = s.yr and r.department = s.department THEN
 flag := 1;
 END IF;
