@@ -469,6 +469,7 @@ BEGIN
 IF current_user = 'postgres' THEN
 RETURN NEW;
 END IF;
+EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
 IF current_user NOT IN (SELECT teacher_id from instructor_record) THEN
 RAISE EXCEPTION 'Wrong user/function!';
 END IF;
@@ -481,7 +482,6 @@ IF NEW.sem != curr.sem OR NEW.yr != curr.yr THEN
 RAISE EXCEPTION 'Incorrect semester!';
 END IF;
 
-EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
 DO
 $do$
 BEGIN
