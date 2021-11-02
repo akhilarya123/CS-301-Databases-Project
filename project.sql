@@ -996,8 +996,6 @@ $$;
 
 ---------------------------------------------------------------------------------------
 
--------------------------------------------------------------------------------------
-
 CREATE OR REPLACE FUNCTION show_transcript(student_id varchar(12), sem int, yr int)
 RETURNS void
 LANGUAGE PLPGSQL
