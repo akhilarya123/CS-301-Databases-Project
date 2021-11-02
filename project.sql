@@ -359,6 +359,7 @@ curr record;
 cgpa real;
 criteria real;
 cred real;
+cr real;
 curr_cred real;
 flag integer;
 r record;
@@ -424,7 +425,8 @@ END loop;
 
 SELECT get_prev_creds() into cred;
 EXECUTE FORMAT('SELECT SUM(credits) from %I;', current_user||'_enr') into curr_cred;
-IF curr_cred + NEW.credits <= 1.25*cred THEN
+SELECT credits from course_catalogue where course_id = NEW.course_id into cr;
+IF curr_cred + cr <= 1.25*cred THEN
 RAISE EXCEPTION 'Within credit limit! Enrol normally.';
 END IF;
 RETURN NEW;
