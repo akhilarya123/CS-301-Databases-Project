@@ -865,7 +865,7 @@ RAISE EXCEPTION 'Wrong user/function!';
 END IF;
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
 EXECUTE FORMAT('SELECT section_id from %I where student_id = %L and course_id = %L;', current_user||'_ticket', stdid, cid) INTO secid; 
-EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', current_user||'_ticket', stdid, cid, secid, curr.sem, curr.yr, "Approved by Instructor");
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', current_user||'_ticket', stdid, cid, secid, curr.sem, curr.yr, 'Approved by Instructor');
 END;
 $$;
 
@@ -881,7 +881,7 @@ secid int;
 BEGIN
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
 EXECUTE FORMAT('SELECT section_id from %I where student_id = %L and course_id = %L;', current_user||'_ticket', stdid, cid) INTO secid; 
-EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', current_user||'_ticket', stdid, cid, secid, curr.sem, curr.yr, "Rejected by Instructor");
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', current_user||'_ticket', stdid, cid, secid, curr.sem, curr.yr, 'Rejected by Instructor');
 END;
 $$;
 
@@ -897,7 +897,7 @@ secid int;
 BEGIN
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
 EXECUTE FORMAT('SELECT section_id from %I where student_id = %L and course_id = %L;', current_user||'_ticket', stdid, cid) INTO secid; 
-EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', current_user||'_ticket', stdid, cid, secid, curr.sem, curr.yr, "Approved by Batch Advisor");
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', current_user||'_ticket', stdid, cid, secid, curr.sem, curr.yr, 'Approved by Batch Advisor');
 END;
 $$;
 
@@ -913,7 +913,7 @@ secid int;
 BEGIN
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
 EXECUTE FORMAT('SELECT section_id from %I where student_id = %L and course_id = %L;', current_user||'_ticket', stdid, cid) INTO secid; 
-EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', current_user||'_ticket', stdid, cid, secid, curr.sem, curr.yr, "Rejected by Batch Advisor");
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', current_user||'_ticket', stdid, cid, secid, curr.sem, curr.yr, 'Rejected by Batch Advisor');
 END;
 $$;
 
@@ -929,7 +929,7 @@ secid int;
 BEGIN
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
 EXECUTE FORMAT('SELECT section_id from %I where student_id = %L and course_id = %L;', current_user||'_ticket', stdid, cid) INTO secid; 
-EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', current_user||'_ticket', stdid, cid, secid, curr.sem, curr.yr, "Approved by Dean");
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', current_user||'_ticket', stdid, cid, secid, curr.sem, curr.yr, 'Approved by Dean');
 END;
 $$;
 
@@ -945,7 +945,7 @@ secid int;
 BEGIN
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
 EXECUTE FORMAT('SELECT section_id from %I where student_id = %L and course_id = %L;', current_user||'_ticket', stdid, cid) INTO secid; 
-EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', current_user||'_ticket', stdid, cid, secid, curr.sem, curr.yr, "Rejected by Dean");
+EXECUTE FORMAT('INSERT INTO %I VALUES(%L, %L, %L, %L, %L, %L);', current_user||'_ticket', stdid, cid, secid, curr.sem, curr.yr, 'Rejected by Dean');
 END;
 $$;
 
