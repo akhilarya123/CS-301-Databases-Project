@@ -16,6 +16,19 @@
  select new_instructor('ins4','mathpal','cs');
  select new_instructor('ins5','sarit','me');
  select new_instructor('ins6','robert','cs');
+ 
+ 
+ select new_batch_advisor('ba1','shyam','cs');
+ select new_batch_advisor('ba2','satyam','mnc');
+ select new_batch_advisor('ba3','shivam','mec');
+ select new_batch_advisor('ba4','sundaram','ee');
+ select new_batch_advisor('ba5','shiv','cvl');
+ select new_batch_advisor('ba6','shishir','mmb');
+ 
+ 
+ 
+ 
+ 
  select new_course_offering('cs301',1,'ins1',0); 
  INSERT INTO batch_req VALUES ('cs301','cs',2019);
  INSERT INTO batch_req VALUES ('cs301','ec',2019);
@@ -61,6 +74,9 @@
  
  
  
+ -- Case 1
+ 
+ 
  
  \c - csb1;
  select enrol('cs301',1);
@@ -78,3 +94,36 @@
  
  
  
+-- Case 2
+
+
+insert into csb1_tt values ('ge103',1,2019,4.5,0);
+insert into csb1_tt values ('cs201',1,2020,4,8);
+insert into csb1_tt values ('cs301',1,2021,3,4);
+insert into csb1_tt values ('cs303',1,2021,3,7);
+insert into csb1_tt values ('cs302',2,2021,3,10);
+insert into csb1_tt values ('cs304',2,2021,3,9);
+
+
+insert into csb2_tt values ('ge103',1,2019,4.5,8);
+insert into csb2_tt values ('cs201',1,2020,4,2);
+insert into csb2_tt values ('cs301',1,2021,3,8);
+insert into csb2_tt values ('cs303',1,2021,3,9);
+insert into csb2_tt values ('cs302',2,2021,3,9);
+insert into csb2_tt values ('cs304',2,2021,3,9);
+
+insert into csb3_tt values ('ge103',1,2019,4.5,6);
+insert into csb3_tt values ('cs201',1,2020,4,5);
+insert into csb3_tt values ('cs301',1,2021,3,5);
+insert into csb3_tt values ('cs303',1,2021,3,6);
+insert into csb3_tt values ('cs302',2,2021,3,6);
+insert into csb3_tt values ('cs304',2,2021,3,5);
+
+insert into csb4_tt values ('ge103',1,2019,4.5,7);
+insert into csb4_tt values ('cs201',1,2020,4,9);
+insert into csb4_tt values ('cs301',1,2021,3,9);
+insert into csb4_tt values ('cs303',1,2021,3,9);
+insert into csb4_tt values ('cs302',2,2021,3,9);
+insert into csb4_tt values ('cs304',1,2021,3,10);
+
+
