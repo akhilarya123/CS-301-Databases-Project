@@ -449,9 +449,14 @@ RAISE EXCEPTION 'Wrong Approval!';
 END IF;
 
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
+DO
+$do$
+BEGIN
 IF NOT EXISTS (EXECUTE FORMAT('SELECT * FROM %I where section_id = %L and course_id = %L and student_id = %L and approval = ''Pending Instructor Approval'';'), current_user||'_ticket', NEW.section_id, NEW.course_id, NEW.student_id) THEN
 RAISE EXCEPTION 'Incorrect Values! Check again.';
 END IF;
+end;
+$do$;
 RETURN NEW;
 END;
 $$;
@@ -491,9 +496,14 @@ RAISE EXCEPTION 'Wrong Approval!';
 END IF;
 
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
+DO
+$do$
+BEGIN
 IF NOT EXISTS (EXECUTE FORMAT('SELECT * FROM %I where section_id = %L and course_id = %L and student_id = %L and approval = ''Pending Batch Advisor Approval'';'), current_user||'_ticket', NEW.section_id, NEW.course_id, NEW.student_id) THEN
 RAISE EXCEPTION 'Incorrect Values! Check again.';
 END IF;
+end;
+$do$;
 RETURN NEW;
 END;
 $$;
