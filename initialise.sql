@@ -168,17 +168,40 @@ insert into csb4_tt values ('cs304',1,2021,3,10);
  select new_student('csb1','akhil',2019,'cs');
  select new_instructor('ins1','gunturi','cs');
  select new_batch_advisor('ba1','shyam','cs');
-insert into csb1_tt VALUES ('crs11',1,2019,3,8);
-insert into csb1_tt VALUES ('crs12',1,2019,3.5,6);
-insert into csb1_tt VALUES ('crs13',1,2019,4,7);
-insert into csb1_tt VALUES ('crs21',2,2019,3,6);
-insert into csb1_tt VALUES ('crs22',2,2019,3.5,7);
-insert into csb1_tt VALUES ('crs23',2,2019,3,8);
-insert into csb1_tt VALUES ('crs31',1,2020,4.5,5);
-insert into csb1_tt VALUES ('crs32',1,2020,5,10);
+insert into csb1_tt VALUES ('crs11',2,2019,3,8);
+insert into csb1_tt VALUES ('crs12',2,2019,3.5,6);
+insert into csb1_tt VALUES ('crs13',2,2019,4,7);
+insert into csb1_tt VALUES ('crs21',1,2020,3,6);
+insert into csb1_tt VALUES ('crs22',1,2020,3.5,7);
+insert into csb1_tt VALUES ('crs23',1,2020,3,8);
+insert into csb1_tt VALUES ('crs31',2,2020,4.5,5);
+insert into csb1_tt VALUES ('crs32',2,2020,5,10);
+
+--CGPA CRITERIA
+  select new_course_offering('cs301',1,'ins1',7.2); 
+insert into csb1_tt VALUES ('crs33',1,2020,8,10);
+
+--Batch req
+insert into batch_req values('cs301', 'cs', '2020');
+
+insert into batch_req values('cs301', 'cs', '2019');
+
+--Prereq
+insert into csb1_tt VALUES ('crs41',1,2020,2,3);
+insert into prerequisite values('cs301', 'crs41');
+
+delete from csb1_tt where course_id = 'crs41';
+insert into csb1_tt VALUES ('crs41',1,2020,2,5);
+
+--Time slot clash
+insert into time_table values('cs301', 3, 5);
+insert into time_table values('cs301', 3, 6);
+insert into time_table values('cs308', 3, 5);
+insert into time_table values('cs308', 4, 2);
+insert into csb1_enr values('cs308', 1, 1, 2021, 4);
 
 
-  select new_course_offering('cs301',1,'ins1',0); 
+--Credit limit
   select new_course_offering('cs302',1,'ins1',0); 
   select new_course_offering('cs303',1,'ins1',0); 
   select new_course_offering('cs304',1,'ins1',0); 
@@ -188,6 +211,17 @@ insert into csb1_tt VALUES ('crs32',1,2020,5,10);
   select new_course_offering('ge105',1,'ins1',0); 
   select new_course_offering('ge106',1,'ins1',0); 
 
+ select enrol('cs301',1);
+ select enrol('cs302',1);
+ select enrol('cs303',1);
+ select enrol('cs304',1);
+ select enrol('cs201',1);
+ select enrol('ge103',1);
+
+ select enrol('ge104',1);
+
+
+--Get grades
 
  select new_student('csb2','aditya',2019,'cs');
  select new_student('csb3','rahul',2019,'me');
@@ -196,3 +230,7 @@ insert into csb1_tt VALUES ('crs32',1,2020,5,10);
  INSERT INTO ge103_1_students values('csb3');
 
  select get_grades_from_csv('ge103',1,'D:\grades.csv');
+
+--Set grades
+
+select set_grades('ge103', 1);
