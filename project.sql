@@ -1036,6 +1036,7 @@ LANGUAGE PLPGSQL
 AS $$
 DECLARE
 r record;
+x record;
 curr record;
 cred real;
 BEGIN
@@ -1044,9 +1045,9 @@ FOR r IN EXECUTE FORMAT('SELECT * FROM %I;', course_id||'_'||section_id||'_stude
 -- DO
 -- $do$
 -- BEGIN
-r := row(null);
-EXECUTE FORMAT('SELECT * FROM %I;', course_id||'_'||section_id||'_grades') into r;
-IF 
+x := row(null);
+EXECUTE FORMAT('SELECT * FROM %I WHERE student_id = %L;', course_id||'_'||section_id||'_grades', r.student_id) into x;
+IF x is null THEN 
 RAISE EXCEPTION 'Grade for % is not present', r.student_id;
 END IF;
 -- end;
@@ -1057,7 +1058,9 @@ FOR r IN EXECUTE FORMAT('SELECT * FROM %I;', course_id||'_'||section_id||'_grade
 -- DO
 -- $do$
 -- BEGIN
-IF r.student_id NOT IN EXECUTE FORMAT('SELECT * FROM %I;', course_id||'_'||section_id||'_students') THEN
+x := row(null);
+EXECUTE FORMAT('SELECT * FROM %I WHERE student_id = %L;', course_id||'_'||section_id||'_students', r.student_id) into x;
+IF x is null THEN
 RAISE EXCEPTION 'Student % is not enrolled, yet has a grade present', r.student_id;
 END IF;
 -- end;
