@@ -81,14 +81,16 @@ CREATE ROLE BA;
 CREATE ROLE INS;
 CREATE ROLE STD;
 
-GRANT BA to dean WITH ADMIN OPTION;
-GRANT INS to dean WITH ADMIN OPTION;
-GRANT STD to dean WITH ADMIN OPTION;
+-- GRANT BA to dean WITH ADMIN OPTION;
+-- GRANT INS to dean WITH ADMIN OPTION;
+-- GRANT STD to dean WITH ADMIN OPTION;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO dean;
 ALTER USER dean SUPERUSER;
 
 GRANT SELECT ON course_offerings, course_catalogue, prerequisite, batch_req, time_table, student_record,
 current_info, instructor_record, batch_advisor_record to BA, STD, INS;
+GRANT pg_read_server_files TO ins; 
+GRANT pg_write_server_files TO ins; 
 
 -------------------------------------------------------------------------------------
 
@@ -304,6 +306,11 @@ IF r.yr = s.yr and r.department = s.department THEN
 flag := 1;
 END IF;
 END LOOP;
+r:=row(null);
+SELECT * FROM batch_req where batch_req.course_id = NEW.course_id into r;
+IF r is null THEN
+flag := 1;
+END IF;
 IF flag = 0 THEN
 RAISE EXCEPTION 'Your batch is ineligible for this course!';
 END IF;
@@ -411,6 +418,11 @@ IF r.yr = s.yr and r.department = s.department THEN
 flag := 1;
 END IF;
 END LOOP;
+r:=row(null);
+SELECT * FROM batch_req where batch_req.course_id = NEW.course_id into r;
+IF r is null THEN
+flag := 1;
+END IF;
 IF flag = 0 THEN
 RAISE EXCEPTION 'Your batch is ineligible for this course!';
 END IF;
@@ -1029,25 +1041,27 @@ cred real;
 BEGIN
 
 FOR r IN EXECUTE FORMAT('SELECT * FROM %I;', course_id||'_'||section_id||'_students') loop
-DO
-$do$
-BEGIN
-IF r.student_id NOT IN EXECUTE FORMAT('SELECT * FROM %I;', course_id||'_'||section_id||'_grades') THEN
+-- DO
+-- $do$
+-- BEGIN
+r := row(null);
+EXECUTE FORMAT('SELECT * FROM %I;', course_id||'_'||section_id||'_grades') into r;
+IF 
 RAISE EXCEPTION 'Grade for % is not present', r.student_id;
 END IF;
-end;
-$do$;
+-- end;
+-- $do$;
 END loop;
 
 FOR r IN EXECUTE FORMAT('SELECT * FROM %I;', course_id||'_'||section_id||'_grades') loop
-DO
-$do$
-BEGIN
+-- DO
+-- $do$
+-- BEGIN
 IF r.student_id NOT IN EXECUTE FORMAT('SELECT * FROM %I;', course_id||'_'||section_id||'_students') THEN
 RAISE EXCEPTION 'Student % is not enrolled, yet has a grade present', r.student_id;
 END IF;
-end;
-$do$;
+-- end;
+-- $do$;
 END loop;
 
 EXECUTE FORMAT('SELECT * from current_info c where c.holder = ''curr'';') into curr;
@@ -1090,6 +1104,7 @@ cred :=0;
 IF yr = 0 THEN
 
 for r in EXECUTE FORMAT('SELECT * FROM %I;', student_id||'_tt')  loop
+RAISE NOTICE 'Course: %   Sem: %   Year: %   Credits: %   Grade: %', r.course_id, r.sem, r.yr, r.credits, r.grade;
 grade := grade + r.credits*r.grade;
 cred := cred + r.credits;
 END loop;
@@ -1105,6 +1120,7 @@ END IF;
 
 for r in EXECUTE FORMAT('SELECT * FROM %I;', student_id||'_tt')  loop
 IF r.sem = sem and r.yr = yr THEN
+RAISE NOTICE 'Course: %   Sem: %   Year: %   Credits: %   Grade: %', r.course_id, r.sem, r.yr, r.credits, r.grade;
 grade := grade + r.credits*r.grade;
 cred := cred + r.credits;
 END IF;

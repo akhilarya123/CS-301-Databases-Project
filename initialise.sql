@@ -13,6 +13,8 @@
  select new_student('csb4','rohan',2019,'me');
  select new_student('csb5','raghav',2019,'ec');
  select new_student('csb6','raghav',2019,'ec');
+
+
  select new_instructor('ins1','gunturi','cs');
  select new_instructor('ins2','hansan','cs');
  select new_instructor('ins3','dewan','cs');
@@ -144,3 +146,53 @@ insert into csb4_tt values ('cs304',1,2021,3,10);
 
 
 
+
+
+
+
+
+
+
+
+
+
+ INSERT INTO course_catalogue VALUES ('cs301',4,2,1,1,4);
+ INSERT INTO course_catalogue VALUES ('cs302',4,2,1,1,4);
+ INSERT INTO course_catalogue VALUES ('cs303',2,2,1,1,3);
+ INSERT INTO course_catalogue VALUES ('cs304',3,2,1,1,3);
+ INSERT INTO course_catalogue VALUES ('cs201',3,2,1,1,3);
+ INSERT INTO course_catalogue VALUES ('ge103',3,2,1,1,4);
+ INSERT INTO course_catalogue VALUES ('ge104',3,2,1,1,4);
+ INSERT INTO course_catalogue VALUES ('ge105',3,2,1,1,4);
+ INSERT INTO course_catalogue VALUES ('ge106',3,2,1,1,4);
+ select new_student('csb1','akhil',2019,'cs');
+ select new_instructor('ins1','gunturi','cs');
+ select new_batch_advisor('ba1','shyam','cs');
+insert into csb1_tt VALUES ('crs11',1,2019,3,8);
+insert into csb1_tt VALUES ('crs12',1,2019,3.5,6);
+insert into csb1_tt VALUES ('crs13',1,2019,4,7);
+insert into csb1_tt VALUES ('crs21',2,2019,3,6);
+insert into csb1_tt VALUES ('crs22',2,2019,3.5,7);
+insert into csb1_tt VALUES ('crs23',2,2019,3,8);
+insert into csb1_tt VALUES ('crs31',1,2020,4.5,5);
+insert into csb1_tt VALUES ('crs32',1,2020,5,10);
+
+
+  select new_course_offering('cs301',1,'ins1',0); 
+  select new_course_offering('cs302',1,'ins1',0); 
+  select new_course_offering('cs303',1,'ins1',0); 
+  select new_course_offering('cs304',1,'ins1',0); 
+  select new_course_offering('cs201',1,'ins1',0); 
+  select new_course_offering('ge103',1,'ins1',0); 
+  select new_course_offering('ge104',1,'ins1',0); 
+  select new_course_offering('ge105',1,'ins1',0); 
+  select new_course_offering('ge106',1,'ins1',0); 
+
+
+ select new_student('csb2','aditya',2019,'cs');
+ select new_student('csb3','rahul',2019,'me');
+ INSERT INTO ge103_1_students values('csb1');
+ INSERT INTO ge103_1_students values('csb2');
+ INSERT INTO ge103_1_students values('csb3');
+
+ select get_grades_from_csv('ge103',1,'D:\grades.csv');
